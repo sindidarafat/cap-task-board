@@ -687,47 +687,6 @@ export default function TaskBoardApp() {
               </form>
             )}
           </div>
-
-          {/* Quick login links for testing */}
-          <div className="border-t border-[#dce1ec] pt-4">
-            <div className="text-[12px] font-semibold text-[#3b4254] mb-2">
-              Quick sign-in accounts:
-            </div>
-            <div className="grid grid-cols-2 gap-2 text-[13px]">
-              <button
-                type="button"
-                onClick={() => handleLogin("muntasir@cap.com", "admin123")}
-                className="text-left px-3 py-2 rounded-lg border border-[#dce1ec] bg-white hover:border-[#1f2d5a] transition-colors cursor-pointer"
-              >
-                <div className="font-semibold text-[#1f2d5a]">Muntasir Mannan</div>
-                <div className="text-[11.5px] text-[#e8792b] font-medium">Admin</div>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleLogin("amit@cap.com", "admin123")}
-                className="text-left px-3 py-2 rounded-lg border border-[#dce1ec] bg-white hover:border-[#1f2d5a] transition-colors cursor-pointer"
-              >
-                <div className="font-semibold text-[#1f2d5a]">Amit Pramanik</div>
-                <div className="text-[11.5px] text-[#e8792b] font-medium">Admin</div>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleLogin("rakib@cap.com", "member123")}
-                className="text-left px-3 py-2 rounded-lg border border-[#dce1ec] bg-white hover:border-[#1f2d5a] transition-colors cursor-pointer"
-              >
-                <div className="font-semibold text-[#1e2330]">Rakib Islam</div>
-                <div className="text-[11.5px] text-[#3b4254]">Member (view only)</div>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleLogin("tahmina@cap.com", "member123")}
-                className="text-left px-3 py-2 rounded-lg border border-[#dce1ec] bg-white hover:border-[#1f2d5a] transition-colors cursor-pointer"
-              >
-                <div className="font-semibold text-[#1e2330]">Tahmina Taj</div>
-                <div className="text-[11.5px] text-[#8a4500] font-medium">Pending Admin</div>
-              </button>
-            </div>
-          </div>
         </div>
       </div>
     );
