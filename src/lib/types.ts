@@ -91,6 +91,7 @@ export type AdminRequestStatus = "NONE" | "PENDING" | "APPROVED" | "REJECTED";
 
 export interface UserAccount {
   id: string;
+  memberId?: string;
   name: string;
   email: string;
   passwordHash: string;

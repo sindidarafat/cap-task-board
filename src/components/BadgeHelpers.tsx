@@ -106,3 +106,26 @@ export function UrgencyPill({ urgency }: { urgency: number | null }) {
     </span>
   );
 }
+
+export function MemberTag({
+  name,
+  idMap,
+  className = "",
+}: {
+  name: string;
+  idMap?: Record<string, string>;
+  className?: string;
+}) {
+  if (!name) return <span className="text-neutral-400">—</span>;
+  const id = idMap ? idMap[name.trim().toLowerCase()] : undefined;
+  return (
+    <span className={`inline-flex items-center gap-1.5 whitespace-nowrap ${className}`}>
+      <span>{name}</span>
+      {id && (
+        <span className="text-neutral-400 font-mono-code text-[11px] font-normal tracking-tight">
+          {id}
+        </span>
+      )}
+    </span>
+  );
+}

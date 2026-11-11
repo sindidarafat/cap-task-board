@@ -19,6 +19,7 @@ import {
 } from "@/lib/formulas";
 import {
   FlagBadge,
+  MemberTag,
   PriorityBadge,
   StatusBadge,
   UrgencyPill,
@@ -78,6 +79,7 @@ export default function TaskBoardApp() {
   const [authName, setAuthName] = useState("");
   const [authTeamRole, setAuthTeamRole] = useState("");
   const [authAccountType, setAuthAccountType] = useState<"MEMBER" | "ADMIN">("MEMBER");
+  const [selectedTeamMemberId, setSelectedTeamMemberId] = useState("");
   const [authError, setAuthError] = useState("");
   const [authBusy, setAuthBusy] = useState(false);
 
@@ -193,6 +195,19 @@ export default function TaskBoardApp() {
     () => computeClients(clients, computedTasks),
     [clients, computedTasks]
   );
+
+  const memberIdMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    team.forEach((m) => {
+      map[m.name.trim().toLowerCase()] = m.id;
+    });
+    users.forEach((u) => {
+      if (u.memberId) {
+        map[u.name.trim().toLowerCase()] = u.memberId;
+      }
+    });
+    return map;
+  }, [team, users]);
 
   const selectedMemberName = myWorksMember || currentUser?.name || "";
 
@@ -311,6 +326,10 @@ export default function TaskBoardApp() {
           password: authPassword,
           teamRole: authTeamRole || (authAccountType === "ADMIN" ? "Admin" : "Member"),
           accountType: authAccountType,
+          memberId:
+            selectedTeamMemberId && selectedTeamMemberId !== "custom"
+              ? selectedTeamMemberId
+              : undefined,
         }),
       });
       if (data.token) {
@@ -609,6 +628,39 @@ export default function TaskBoardApp() {
               <form onSubmit={handleRegister} className="space-y-3.5">
                 <div>
                   <label className="block text-[13px] font-semibold text-[#1f2d5a] mb-1">
+                    Select team member (from Excel roster)
+                  </label>
+                  <select
+                    value={selectedTeamMemberId}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setSelectedTeamMemberId(val);
+                      if (val && val !== "custom") {
+                        const found = team.find((m) => m.id === val);
+                        if (found) {
+                          setAuthName(found.name);
+                          setAuthTeamRole(found.role);
+                          if (!authEmail) {
+                            const first = found.name.split(" ")[0].toLowerCase();
+                            setAuthEmail(`${first}@cap.com`);
+                          }
+                        }
+                      }
+                    }}
+                    className="w-full rounded-lg border border-[#ccd1de] px-3 py-2 text-[13.5px] text-[#1e2330] focus:outline-none focus:border-[#1f2d5a] bg-white"
+                  >
+                    <option value="">— Choose name from roster (or enter below) —</option>
+                    {team.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.name} ({m.id}) — {m.role}
+                      </option>
+                    ))}
+                    <option value="custom">+ New Member / Not listed above</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[13px] font-semibold text-[#1f2d5a] mb-1">
                     Full name
                   </label>
                   <input
@@ -766,8 +818,13 @@ export default function TaskBoardApp() {
             <div className="h-4 w-px bg-[#dce1ec] mx-0.5 hidden sm:block" />
 
             <div className="flex items-center gap-2 text-[13px]">
-              <span className="text-[#1e2330] font-semibold">
-                {currentUser.name}
+              <span className="text-[#1e2330] font-semibold inline-flex items-center gap-1.5">
+                <span>{currentUser.name}</span>
+                {(currentUser.memberId || memberIdMap[currentUser.name.trim().toLowerCase()]) && (
+                  <span className="text-neutral-400 font-mono-code text-[11px] font-normal">
+                    {currentUser.memberId || memberIdMap[currentUser.name.trim().toLowerCase()]}
+                  </span>
+                )}
               </span>
               <span
                 className={`px-2 py-0.5 rounded-full text-[11.5px] font-bold ${
@@ -949,7 +1006,8 @@ export default function TaskBoardApp() {
                       <th className="py-3 px-3 font-semibold text-[12.5px]">ID</th>
                       <th className="py-3 px-3 font-semibold text-[12.5px]">Client</th>
                       <th className="py-3 px-3 font-semibold text-[12.5px]">Type</th>
-                      <th className="py-3 px-4 font-semibold text-[12.5px]">Task</th>
+                      <th className="py-3 px-4 font-semibold text-[12.5px] min-w-[180px]">Task</th>
+                      <th className="py-3 px-4 font-semibold text-[12.5px] min-w-[220px]">Description</th>
                       <th className="py-3 px-3 font-semibold text-[12.5px]">Owner</th>
                       <th className="py-3 px-3 font-semibold text-[12.5px]">Reviewer</th>
                       <th className="py-3 px-3 font-semibold text-[12.5px]">Priority</th>
@@ -990,25 +1048,27 @@ export default function TaskBoardApp() {
                           <td className="py-3 px-3">
                             <WorkTypeBadge workType={t.workType} />
                           </td>
-                          <td className="py-3 px-4 max-w-md">
-                            <div className="font-semibold text-[#1e2330] leading-snug">
-                              {t.task}
-                            </div>
-                            {t.brief && (
-                              <div className="text-[12.5px] text-[#3b4254] mt-0.5 leading-snug">
-                                {t.brief}
-                              </div>
-                            )}
+                          <td className="py-3 px-4 max-w-xs font-semibold text-[#1e2330] leading-snug">
+                            {t.task}
+                          </td>
+                          <td className="py-3 px-4 max-w-sm text-[13px] text-[#3b4254] leading-snug">
+                            {t.brief || <span className="text-neutral-400 font-normal">—</span>}
                           </td>
                           <td className="py-3 px-3 font-medium text-[#1e2330] whitespace-nowrap">
-                            {t.owner || (
+                            {t.owner ? (
+                              <MemberTag name={t.owner} idMap={memberIdMap} />
+                            ) : (
                               <span className="text-[#9c0006] font-semibold italic">
                                 Unassigned
                               </span>
                             )}
                           </td>
                           <td className="py-3 px-3 font-medium text-[#2d3446] whitespace-nowrap">
-                            {t.reviewer || "—"}
+                            {t.reviewer ? (
+                              <MemberTag name={t.reviewer} idMap={memberIdMap} />
+                            ) : (
+                              "—"
+                            )}
                           </td>
                           <td className="py-3 px-3">
                             <PriorityBadge priority={t.priority} />
@@ -1088,8 +1148,13 @@ export default function TaskBoardApp() {
             {/* Member Header & Selector */}
             <div className="bg-white rounded-lg border border-[#dce1ec] p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 shadow-xs">
               <div>
-                <h2 className="text-lg font-bold text-[#1f2d5a]">
-                  My Works — {selectedMemberName}
+                <h2 className="text-lg font-bold text-[#1f2d5a] inline-flex items-center gap-2">
+                  <span>My Works — {selectedMemberName}</span>
+                  {memberIdMap[selectedMemberName.trim().toLowerCase()] && (
+                    <span className="text-neutral-400 font-mono-code text-[12px] font-normal">
+                      ({memberIdMap[selectedMemberName.trim().toLowerCase()]})
+                    </span>
+                  )}
                 </h2>
                 <p className="text-[13px] text-[#3b4254]">
                   Ongoing tasks assigned to {selectedMemberName === currentUser.name ? "you" : selectedMemberName}, ordered by urgency and deadline.
@@ -1115,7 +1180,7 @@ export default function TaskBoardApp() {
                       )
                       .map((m) => (
                         <option key={m.id} value={m.name}>
-                          {m.name} ({m.role})
+                          {m.name} ({m.id}) — {m.role}
                         </option>
                       ))}
                   </select>
@@ -1233,7 +1298,8 @@ export default function TaskBoardApp() {
                       <th className="py-3 px-3 font-semibold text-[12.5px]">ID</th>
                       <th className="py-3 px-3 font-semibold text-[12.5px]">Client</th>
                       <th className="py-3 px-3 font-semibold text-[12.5px]">Type</th>
-                      <th className="py-3 px-4 font-semibold text-[12.5px]">Task</th>
+                      <th className="py-3 px-4 font-semibold text-[12.5px] min-w-[180px]">Task</th>
+                      <th className="py-3 px-4 font-semibold text-[12.5px] min-w-[220px]">Description</th>
                       <th className="py-3 px-3 font-semibold text-[12.5px]">Owner</th>
                       <th className="py-3 px-3 font-semibold text-[12.5px]">Reviewer</th>
                       <th className="py-3 px-3 font-semibold text-[12.5px]">Priority</th>
@@ -1251,7 +1317,7 @@ export default function TaskBoardApp() {
                     {list.length === 0 ? (
                       <tr>
                         <td
-                          colSpan={isAdmin ? 16 : 15}
+                          colSpan={isAdmin ? 17 : 16}
                           className="py-10 text-center text-[13.5px] font-medium text-[#3b4254]"
                         >
                           No tasks found in this section for {selectedMemberName}.
@@ -1285,21 +1351,21 @@ export default function TaskBoardApp() {
                             <td className="py-3 px-3">
                               <WorkTypeBadge workType={t.workType} />
                             </td>
-                            <td className="py-3 px-4 max-w-md">
-                              <div className="font-semibold text-[#1e2330] leading-snug">
-                                {t.task}
-                              </div>
-                              {t.brief && (
-                                <div className="text-[12.5px] text-[#3b4254] mt-0.5 leading-snug">
-                                  {t.brief}
-                                </div>
-                              )}
+                            <td className="py-3 px-4 max-w-xs font-semibold text-[#1e2330] leading-snug">
+                              {t.task}
+                            </td>
+                            <td className="py-3 px-4 max-w-sm text-[13px] text-[#3b4254] leading-snug">
+                              {t.brief || <span className="text-neutral-400 font-normal">—</span>}
                             </td>
                             <td className="py-3 px-3 font-medium text-[#1e2330] whitespace-nowrap">
-                              {t.owner || "—"}
+                              <MemberTag name={t.owner} idMap={memberIdMap} />
                             </td>
                             <td className="py-3 px-3 font-medium text-[#2d3446] whitespace-nowrap">
-                              {t.reviewer || "—"}
+                              {t.reviewer ? (
+                                <MemberTag name={t.reviewer} idMap={memberIdMap} />
+                              ) : (
+                                "—"
+                              )}
                             </td>
                             <td className="py-3 px-3">
                               <PriorityBadge priority={t.priority} />
@@ -1524,10 +1590,10 @@ export default function TaskBoardApp() {
                       <th className="py-3 px-2.5 font-semibold text-[12.5px]">Client</th>
                       <th className="py-3 px-2 font-semibold text-[12.5px]">Type</th>
                       <th className="py-3 px-3 font-semibold text-[12.5px]">
-                        Task / Deliverable
+                        Task
                       </th>
                       <th className="py-3 px-2.5 font-semibold text-[12.5px]">
-                        Brief
+                        Description
                       </th>
                       <th className="py-3 px-2.5 font-semibold text-[12.5px]">Owner</th>
                       <th className="py-3 px-2 font-semibold text-[12.5px]">Team</th>
@@ -1596,19 +1662,25 @@ export default function TaskBoardApp() {
                                 <option value="">Unassigned</option>
                                 {team.map((m) => (
                                   <option key={m.id} value={m.name}>
-                                    {m.name}
+                                    {m.name} ({m.id})
                                   </option>
                                 ))}
                               </select>
+                            ) : t.owner ? (
+                              <MemberTag name={t.owner} idMap={memberIdMap} />
                             ) : (
-                              t.owner || "—"
+                              "—"
                             )}
                           </td>
                           <td className="py-3 px-2 text-[13px] font-medium text-[#2d3446] whitespace-nowrap">
                             {t.team || "—"}
                           </td>
                           <td className="py-3 px-2.5 text-[13px] font-medium text-[#2d3446] whitespace-nowrap">
-                            {t.reviewer || "—"}
+                            {t.reviewer ? (
+                              <MemberTag name={t.reviewer} idMap={memberIdMap} />
+                            ) : (
+                              "—"
+                            )}
                           </td>
                           <td className="py-3 px-2">
                             {isAdmin ? (
@@ -1759,12 +1831,23 @@ export default function TaskBoardApp() {
                             <div className="text-[13.5px] font-semibold text-[#1e2330]">
                               {t.task}
                             </div>
+                            {t.brief && (
+                              <p className="text-[12px] text-[#525b70] line-clamp-2 leading-snug">
+                                {t.brief}
+                              </p>
+                            )}
                             <div className="flex items-center justify-between text-[12.5px] text-[#2d3446] font-medium">
                               <span className="truncate">{t.client}</span>
                               <PriorityBadge priority={t.priority} />
                             </div>
                             <div className="pt-2 border-t border-[#e3e6ee] flex items-center justify-between text-[12px] text-[#3b4254] font-medium">
-                              <span>{t.owner || "Unassigned"}</span>
+                              <span>
+                                {t.owner ? (
+                                  <MemberTag name={t.owner} idMap={memberIdMap} />
+                                ) : (
+                                  "Unassigned"
+                                )}
+                              </span>
                               <span className="font-mono-code font-semibold text-[#1f2d5a]">
                                 {t.internalDeadline
                                   ? t.internalDeadline.slice(5)
@@ -1789,6 +1872,8 @@ export default function TaskBoardApp() {
           <ComingUpView
             summary={comingUpSummary}
             estimateBuffer={estimateBuffer}
+            team={team}
+            memberIdMap={memberIdMap}
             onSelectTask={
               isAdmin
                 ? (t: ComputedTask) => {
@@ -1808,6 +1893,7 @@ export default function TaskBoardApp() {
             tasks={computedTasks}
             team={team}
             referenceDate={referenceDate}
+            memberIdMap={memberIdMap}
           />
         )}
 
@@ -1818,6 +1904,7 @@ export default function TaskBoardApp() {
           <ClientsPitchesView
             clients={computedClients}
             team={team}
+            memberIdMap={memberIdMap}
             isAdmin={isAdmin}
             onAddClient={async (c) => {
               const data = await apiFetch("/api/clients", {
@@ -1904,6 +1991,8 @@ export default function TaskBoardApp() {
             currentUser={currentUser}
             isAdmin={isAdmin}
             users={users}
+            team={team}
+            memberIdMap={memberIdMap}
             activityLog={activityLog}
             onRequestAdminAccess={handleRequestAdminAccess}
             onAdminAction={async (payload) => {

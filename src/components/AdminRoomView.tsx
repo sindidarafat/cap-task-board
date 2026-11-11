@@ -1,12 +1,14 @@
 "use client";
 
 import React, { useState } from "react";
-import { ActivityLogEntry, SafeUserAccount } from "@/lib/types";
+import { ActivityLogEntry, SafeUserAccount, TeamMember } from "@/lib/types";
 
 interface AdminRoomViewProps {
   currentUser: SafeUserAccount;
   isAdmin: boolean;
   users: SafeUserAccount[];
+  team?: TeamMember[];
+  memberIdMap?: Record<string, string>;
   activityLog: ActivityLogEntry[];
   onAdminAction: (payload: Record<string, unknown>) => Promise<void>;
   onRequestAdminAccess: () => Promise<void>;
@@ -16,12 +18,15 @@ export default function AdminRoomView({
   currentUser,
   isAdmin,
   users,
+  team = [],
+  memberIdMap = {},
   activityLog,
   onAdminAction,
   onRequestAdminAccess,
 }: AdminRoomViewProps) {
   const [search, setSearch] = useState("");
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [selectedTeamMemberId, setSelectedTeamMemberId] = useState("");
   const [newName, setNewName] = useState("");
   const [newEmail, setNewEmail] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -75,11 +80,16 @@ export default function AdminRoomView({
         password: newPassword || "cap123",
         teamRole: newTeamRole || (newAccountRole === "ADMIN" ? "Admin" : "Member"),
         role: newAccountRole,
+        memberId:
+          selectedTeamMemberId && selectedTeamMemberId !== "custom"
+            ? selectedTeamMemberId
+            : undefined,
       });
       setNewName("");
       setNewEmail("");
       setNewPassword("");
       setNewTeamRole("");
+      setSelectedTeamMemberId("");
       setShowCreateModal(false);
       setFeedback({
         type: "success",
@@ -178,6 +188,11 @@ export default function AdminRoomView({
                     <span className="text-[14px] font-semibold text-[#1e2330]">
                       {reqUser.name}
                     </span>
+                    {(reqUser.memberId || (memberIdMap && memberIdMap[reqUser.name.trim().toLowerCase()])) && (
+                      <span className="text-neutral-400 font-mono-code text-[11px] font-normal">
+                        {reqUser.memberId || (memberIdMap && memberIdMap[reqUser.name.trim().toLowerCase()])}
+                      </span>
+                    )}
                     <span className="text-[12.5px] font-medium text-[#2d3446]">
                       · {reqUser.teamRole}
                     </span>
@@ -258,6 +273,11 @@ export default function AdminRoomView({
                     <span className="text-[14px] font-semibold text-[#1e2330]">
                       {admin.name}
                     </span>
+                    {(admin.memberId || (memberIdMap && memberIdMap[admin.name.trim().toLowerCase()])) && (
+                      <span className="text-neutral-400 font-mono-code text-[11px] font-normal">
+                        {admin.memberId || (memberIdMap && memberIdMap[admin.name.trim().toLowerCase()])}
+                      </span>
+                    )}
                     {admin.id === currentUser.id && (
                       <span className="text-[11.5px] font-semibold text-[#e8792b]">
                         (you)
@@ -328,6 +348,11 @@ export default function AdminRoomView({
                       <span className="text-[14px] font-semibold text-[#1e2330]">
                         {member.name}
                       </span>
+                      {(member.memberId || (memberIdMap && memberIdMap[member.name.trim().toLowerCase()])) && (
+                        <span className="text-neutral-400 font-mono-code text-[11px] font-normal">
+                          {member.memberId || (memberIdMap && memberIdMap[member.name.trim().toLowerCase()])}
+                        </span>
+                      )}
                       {member.id === currentUser.id && (
                         <span className="text-[11.5px] font-semibold text-[#e8792b]">
                           (you)
@@ -427,6 +452,40 @@ export default function AdminRoomView({
               </button>
             </div>
             <form onSubmit={handleCreateAccount} className="p-5 space-y-4">
+              {team.length > 0 && (
+                <div>
+                  <label className="block text-[13px] font-semibold text-[#1f2d5a] mb-1">
+                    Select team member (from Excel roster)
+                  </label>
+                  <select
+                    value={selectedTeamMemberId}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setSelectedTeamMemberId(val);
+                      if (val && val !== "custom") {
+                        const found = team.find((m) => m.id === val);
+                        if (found) {
+                          setNewName(found.name);
+                          setNewTeamRole(found.role);
+                          if (!newEmail) {
+                            const first = found.name.split(" ")[0].toLowerCase();
+                            setNewEmail(`${first}@cap.com`);
+                          }
+                        }
+                      }
+                    }}
+                    className="w-full rounded-lg border border-[#ccd1de] px-3 py-2 text-[13.5px] text-[#1e2330] focus:outline-none focus:border-[#1f2d5a] bg-white"
+                  >
+                    <option value="">— Choose from roster (or enter manually) —</option>
+                    {team.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.name} ({m.id}) — {m.role}
+                      </option>
+                    ))}
+                    <option value="custom">+ New Member / Not listed</option>
+                  </select>
+                </div>
+              )}
               <div>
                 <label className="block text-[13px] font-semibold text-[#1f2d5a] mb-1">
                   Full name *

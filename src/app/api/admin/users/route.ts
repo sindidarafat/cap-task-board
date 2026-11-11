@@ -131,14 +131,55 @@ export async function POST(request: NextRequest) {
     }
 
     const passwordHash = await bcrypt.hash(password, 8);
+
+    const matchedTeamMember = db.team.find(
+      (m) =>
+        m.name.trim().toLowerCase() === name.toLowerCase() ||
+        (body.memberId && m.id.toLowerCase() === String(body.memberId).toLowerCase())
+    );
+
+    let finalName = name;
+    let finalTeamRole = teamRole;
+    let memberId: string;
+
+    if (matchedTeamMember) {
+      finalName = matchedTeamMember.name;
+      memberId = matchedTeamMember.id;
+      if (!teamRole || teamRole === "Team Member") {
+        finalTeamRole = matchedTeamMember.role || "Team Member";
+      }
+    } else {
+      const existingNumericIds = db.team
+        .map((m) => {
+          const match = m.id.match(/\d+/);
+          return match ? parseInt(match[0], 10) : 0;
+        })
+        .filter((n) => !isNaN(n));
+      const nextNum =
+        existingNumericIds.length > 0
+          ? Math.max(...existingNumericIds) + 1
+          : db.team.length + 1;
+      memberId = `M-${String(nextNum).padStart(3, "0")}`;
+
+      db.team.push({
+        id: memberId,
+        name: finalName,
+        role: finalTeamRole,
+        team: "Creative",
+        dailyCapacity: 6,
+        notes: "Created from Admin Room",
+      });
+    }
+
     const newUser: UserAccount = {
       id: `U-${String(db.users.length + 1).padStart(3, "0")}-${Date.now().toString().slice(-4)}`,
-      name,
+      memberId,
+      name: finalName,
       email,
       passwordHash,
       role,
       adminRequestStatus: role === "ADMIN" ? "APPROVED" : "NONE",
-      teamRole,
+      teamRole: finalTeamRole,
       approvedBy: role === "ADMIN" ? currentUser!.name : null,
       approvedAt: role === "ADMIN" ? now : null,
       requestedAt: role === "ADMIN" ? now : null,

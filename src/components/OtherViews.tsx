@@ -9,7 +9,7 @@ import {
   TeamMember,
 } from "@/lib/types";
 import { ComingUpSummary, computeScorecard } from "@/lib/formulas";
-import { PriorityBadge, StatusBadge, WorkTypeBadge } from "./BadgeHelpers";
+import { MemberTag, PriorityBadge, StatusBadge, WorkTypeBadge } from "./BadgeHelpers";
 import StickyTable from "./StickyTable";
 
 /* =========================================================
@@ -18,10 +18,14 @@ import StickyTable from "./StickyTable";
 export function ComingUpView({
   summary,
   estimateBuffer,
+  team = [],
+  memberIdMap = {},
   onSelectTask,
 }: {
   summary: ComingUpSummary;
   estimateBuffer: number;
+  team?: TeamMember[];
+  memberIdMap?: Record<string, string>;
   onSelectTask?: (task: ComputedTask) => void;
 }) {
   return (
@@ -74,7 +78,7 @@ export function ComingUpView({
                       className="even:bg-[#f8f9fc] hover:bg-[#eef1f8] transition-colors"
                     >
                       <td className="py-3 px-4 font-semibold text-[#1e2330]">
-                        {row.person}
+                        <MemberTag name={row.person} idMap={memberIdMap} />
                       </td>
                       <td className="py-3 px-3 font-medium text-[#2d3446]">{row.team}</td>
                       <td className="py-3 px-3 text-center font-mono-code">
@@ -143,7 +147,8 @@ export function ComingUpView({
                   <th className="py-3 px-3 font-semibold text-[12.5px]">Deadline</th>
                   <th className="py-3 px-3 font-semibold text-[12.5px]">Client</th>
                   <th className="py-3 px-3 font-semibold text-[12.5px]">Type</th>
-                  <th className="py-3 px-4 font-semibold text-[12.5px]">Task</th>
+                  <th className="py-3 px-4 font-semibold text-[12.5px] min-w-[180px]">Task</th>
+                  <th className="py-3 px-4 font-semibold text-[12.5px] min-w-[220px]">Description</th>
                   <th className="py-3 px-3 font-semibold text-[12.5px]">Owner</th>
                   <th className="py-3 px-3 font-semibold text-[12.5px]">Priority</th>
                   <th className="py-3 px-3 font-semibold text-[12.5px]">Status</th>
@@ -153,7 +158,7 @@ export function ComingUpView({
               <tbody className="divide-y divide-[#e3e6ee]">
                 {summary.dueNext14Days.length === 0 ? (
                   <tr>
-                    <td colSpan={10} className="py-8 text-center text-[#3b4254]">
+                    <td colSpan={11} className="py-8 text-center text-[#3b4254]">
                       No tasks scheduled in the next 14 days.
                     </td>
                   </tr>
@@ -184,8 +189,11 @@ export function ComingUpView({
                       <td className="py-3 px-4 font-semibold text-[#1e2330]">
                         {task.task}
                       </td>
-                      <td className="py-3 px-3 font-medium text-[#1e2330]">
-                        {task.owner || "—"}
+                      <td className="py-3 px-4 text-[13px] text-[#3b4254] max-w-sm">
+                        {task.brief || <span className="text-neutral-400 font-normal">—</span>}
+                      </td>
+                      <td className="py-3 px-3 font-medium text-[#1e2330] whitespace-nowrap">
+                        {task.owner ? <MemberTag name={task.owner} idMap={memberIdMap} /> : "—"}
                       </td>
                       <td className="py-3 px-3">
                         <PriorityBadge priority={task.priority} />
@@ -213,10 +221,12 @@ export function ScorecardView({
   tasks,
   team,
   referenceDate,
+  memberIdMap = {},
 }: {
   tasks: ComputedTask[];
   team: TeamMember[];
   referenceDate: string;
+  memberIdMap?: Record<string, string>;
 }) {
   const [fromDate, setFromDate] = useState("2026-11-08");
   const [toDate, setToDate] = useState(referenceDate || "2026-11-11");
@@ -298,7 +308,7 @@ export function ScorecardView({
                   className="even:bg-[#f8f9fc] hover:bg-[#eef1f8] transition-colors"
                 >
                   <td className="py-3 px-4 font-semibold text-[#1e2330]">
-                    {r.person}
+                    <MemberTag name={r.person} idMap={memberIdMap} />
                   </td>
                   <td className="py-3 px-3 font-medium text-[#2d3446]">{r.team}</td>
                   <td className="py-3 px-3 text-center font-mono-code font-bold text-[#1f2d5a]">
@@ -364,6 +374,7 @@ export function ScorecardView({
 export function ClientsPitchesView({
   clients,
   team,
+  memberIdMap = {},
   isAdmin,
   onAddClient,
   onUpdateClient,
@@ -371,6 +382,7 @@ export function ClientsPitchesView({
 }: {
   clients: ComputedClient[];
   team: TeamMember[];
+  memberIdMap?: Record<string, string>;
   isAdmin: boolean;
   onAddClient: (c: Partial<ClientRecord>) => Promise<void>;
   onUpdateClient: (c: ClientRecord) => Promise<void>;
@@ -543,12 +555,16 @@ export function ClientsPitchesView({
                           <option value="">None</option>
                           {team.map((m) => (
                             <option key={m.id} value={m.name}>
-                              {m.name}
+                              {m.name} ({m.id})
                             </option>
                           ))}
                         </select>
                       ) : (
-                        c.accountLead || "—"
+                        c.accountLead ? (
+                          <MemberTag name={c.accountLead} idMap={memberIdMap} />
+                        ) : (
+                          "—"
+                        )
                       )}
                     </td>
                     <td className="py-3 px-3 font-medium text-[#2d3446]">
@@ -816,7 +832,12 @@ export function TeamView({
                           className="border border-[#ccd1de] rounded px-2 py-1 text-[13px]"
                         />
                       ) : (
-                        m.name
+                        <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
+                          <span>{m.name}</span>
+                          <span className="text-neutral-400 font-mono-code text-[11px] font-normal">
+                            {m.id}
+                          </span>
+                        </span>
                       )}
                     </td>
                     <td className="py-3 px-3 font-medium text-[#2d3446]">

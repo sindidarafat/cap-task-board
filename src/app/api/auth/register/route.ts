@@ -45,9 +45,51 @@ export async function POST(request: NextRequest) {
     // If user requests an Admin account, it must be approved by other admins (unless 0 admins exist)
     const isAutoApprovedFirstAdmin = requestedAccountType === "ADMIN" && !hasExistingAdmins;
 
+    // Match with existing team members from Excel data (M-001 to M-014) or create a new Member ID
+    const matchedTeamMember = db.team.find(
+      (m) =>
+        m.name.trim().toLowerCase() === name.toLowerCase() ||
+        (body.memberId && m.id.toLowerCase() === String(body.memberId).toLowerCase())
+    );
+
+    let finalName = name;
+    let finalTeamRole = teamRole;
+    let memberId: string;
+
+    if (matchedTeamMember) {
+      finalName = matchedTeamMember.name;
+      memberId = matchedTeamMember.id;
+      if (!teamRole || teamRole === "Team Member") {
+        finalTeamRole = matchedTeamMember.role || "Team Member";
+      }
+    } else {
+      const existingNumericIds = db.team
+        .map((m) => {
+          const match = m.id.match(/\d+/);
+          return match ? parseInt(match[0], 10) : 0;
+        })
+        .filter((n) => !isNaN(n));
+      const nextNum =
+        existingNumericIds.length > 0
+          ? Math.max(...existingNumericIds) + 1
+          : db.team.length + 1;
+      memberId = `M-${String(nextNum).padStart(3, "0")}`;
+
+      // Automatically register them in the team roster for task assignment
+      db.team.push({
+        id: memberId,
+        name: finalName,
+        role: finalTeamRole,
+        team: "Creative",
+        dailyCapacity: 6,
+        notes: "Registered via web account creation",
+      });
+    }
+
     const newUser: UserAccount = {
       id: `U-${String(db.users.length + 1).padStart(3, "0")}-${Date.now().toString().slice(-4)}`,
-      name,
+      memberId,
+      name: finalName,
       email,
       passwordHash,
       role: isAutoApprovedFirstAdmin ? "ADMIN" : "MEMBER",
@@ -57,7 +99,7 @@ export async function POST(request: NextRequest) {
             ? "APPROVED"
             : "PENDING"
           : "NONE",
-      teamRole,
+      teamRole: finalTeamRole,
       approvedBy: isAutoApprovedFirstAdmin ? "System Auto-Bootstrap" : null,
       approvedAt: isAutoApprovedFirstAdmin ? now : null,
       requestedAt: requestedAccountType === "ADMIN" ? now : null,

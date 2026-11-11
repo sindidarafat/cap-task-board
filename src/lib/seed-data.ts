@@ -859,6 +859,7 @@ export const INITIAL_TEAM: TeamMember[] = [
 export const INITIAL_USERS: UserAccount[] = [
   {
     id: "U-001",
+    memberId: "M-007",
     name: "Muntasir Mannan",
     email: "muntasir@cap.com",
     passwordHash: adminHash,
@@ -872,6 +873,7 @@ export const INITIAL_USERS: UserAccount[] = [
   },
   {
     id: "U-002",
+    memberId: "M-010",
     name: "Syeda Neelima Dola",
     email: "dola@cap.com",
     passwordHash: adminHash,
@@ -885,6 +887,7 @@ export const INITIAL_USERS: UserAccount[] = [
   },
   {
     id: "U-003",
+    memberId: "M-001",
     name: "Amit Pramanik",
     email: "amit@cap.com",
     passwordHash: adminHash,
@@ -898,6 +901,7 @@ export const INITIAL_USERS: UserAccount[] = [
   },
   {
     id: "U-004",
+    memberId: "M-008",
     name: "Tahmina Taj",
     email: "tahmina@cap.com",
     passwordHash: memberHash,
@@ -911,6 +915,7 @@ export const INITIAL_USERS: UserAccount[] = [
   },
   {
     id: "U-005",
+    memberId: "M-003",
     name: "Rakib Islam",
     email: "rakib@cap.com",
     passwordHash: memberHash,
@@ -924,6 +929,7 @@ export const INITIAL_USERS: UserAccount[] = [
   },
   {
     id: "U-006",
+    memberId: "M-004",
     name: "Rajib Akash",
     email: "rajib@cap.com",
     passwordHash: memberHash,
@@ -937,6 +943,7 @@ export const INITIAL_USERS: UserAccount[] = [
   },
   {
     id: "U-007",
+    memberId: "M-002",
     name: "Ragib Shahriar",
     email: "ragib@cap.com",
     passwordHash: memberHash,
