@@ -39,8 +39,15 @@ export default function RootLayout({
       lang="en"
       className={`${inter.variable} ${poppins.variable} ${jetbrainsMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-[#f4f5f9] text-[#1e2330]">
+      <body className="min-h-full flex flex-col bg-[#f4f5f9] text-[#1e2330] relative">
         {children}
+        <div
+          className="fixed bottom-1 right-2 z-50 pointer-events-none select-none text-[8.5px] font-mono tracking-widest text-[#1f2d5a]/20 uppercase"
+          aria-hidden="true"
+          title="SA"
+        >
+          SA
+        </div>
       </body>
     </html>
   );

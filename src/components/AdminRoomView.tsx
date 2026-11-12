@@ -188,11 +188,6 @@ export default function AdminRoomView({
                     <span className="text-[14px] font-semibold text-[#1e2330]">
                       {reqUser.name}
                     </span>
-                    {(reqUser.memberId || (memberIdMap && memberIdMap[reqUser.name.trim().toLowerCase()])) && (
-                      <span className="text-neutral-400 font-mono-code text-[11px] font-normal">
-                        {reqUser.memberId || (memberIdMap && memberIdMap[reqUser.name.trim().toLowerCase()])}
-                      </span>
-                    )}
                     <span className="text-[12.5px] font-medium text-[#2d3446]">
                       · {reqUser.teamRole}
                     </span>
@@ -273,11 +268,6 @@ export default function AdminRoomView({
                     <span className="text-[14px] font-semibold text-[#1e2330]">
                       {admin.name}
                     </span>
-                    {(admin.memberId || (memberIdMap && memberIdMap[admin.name.trim().toLowerCase()])) && (
-                      <span className="text-neutral-400 font-mono-code text-[11px] font-normal">
-                        {admin.memberId || (memberIdMap && memberIdMap[admin.name.trim().toLowerCase()])}
-                      </span>
-                    )}
                     {admin.id === currentUser.id && (
                       <span className="text-[11.5px] font-semibold text-[#e8792b]">
                         (you)
@@ -348,11 +338,6 @@ export default function AdminRoomView({
                       <span className="text-[14px] font-semibold text-[#1e2330]">
                         {member.name}
                       </span>
-                      {(member.memberId || (memberIdMap && memberIdMap[member.name.trim().toLowerCase()])) && (
-                        <span className="text-neutral-400 font-mono-code text-[11px] font-normal">
-                          {member.memberId || (memberIdMap && memberIdMap[member.name.trim().toLowerCase()])}
-                        </span>
-                      )}
                       {member.id === currentUser.id && (
                         <span className="text-[11.5px] font-semibold text-[#e8792b]">
                           (you)
@@ -479,7 +464,7 @@ export default function AdminRoomView({
                     <option value="">— Choose from roster (or enter manually) —</option>
                     {team.map((m) => (
                       <option key={m.id} value={m.id}>
-                        {m.name} ({m.id}) — {m.role}
+                        {m.name} — {m.role}
                       </option>
                     ))}
                     <option value="custom">+ New Member / Not listed</option>

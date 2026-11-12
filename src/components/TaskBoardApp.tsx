@@ -652,7 +652,7 @@ export default function TaskBoardApp() {
                     <option value="">— Choose name from roster (or enter below) —</option>
                     {team.map((m) => (
                       <option key={m.id} value={m.id}>
-                        {m.name} ({m.id}) — {m.role}
+                        {m.name} — {m.role}
                       </option>
                     ))}
                     <option value="custom">+ New Member / Not listed above</option>
@@ -818,13 +818,8 @@ export default function TaskBoardApp() {
             <div className="h-4 w-px bg-[#dce1ec] mx-0.5 hidden sm:block" />
 
             <div className="flex items-center gap-2 text-[13px]">
-              <span className="text-[#1e2330] font-semibold inline-flex items-center gap-1.5">
-                <span>{currentUser.name}</span>
-                {(currentUser.memberId || memberIdMap[currentUser.name.trim().toLowerCase()]) && (
-                  <span className="text-neutral-400 font-mono-code text-[11px] font-normal">
-                    {currentUser.memberId || memberIdMap[currentUser.name.trim().toLowerCase()]}
-                  </span>
-                )}
+              <span className="text-[#1e2330] font-semibold">
+                {currentUser.name}
               </span>
               <span
                 className={`px-2 py-0.5 rounded-full text-[11.5px] font-bold ${
@@ -1148,13 +1143,8 @@ export default function TaskBoardApp() {
             {/* Member Header & Selector */}
             <div className="bg-white rounded-lg border border-[#dce1ec] p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 shadow-xs">
               <div>
-                <h2 className="text-lg font-bold text-[#1f2d5a] inline-flex items-center gap-2">
-                  <span>My Works — {selectedMemberName}</span>
-                  {memberIdMap[selectedMemberName.trim().toLowerCase()] && (
-                    <span className="text-neutral-400 font-mono-code text-[12px] font-normal">
-                      ({memberIdMap[selectedMemberName.trim().toLowerCase()]})
-                    </span>
-                  )}
+                <h2 className="text-lg font-bold text-[#1f2d5a]">
+                  My Works — {selectedMemberName}
                 </h2>
                 <p className="text-[13px] text-[#3b4254]">
                   Ongoing tasks assigned to {selectedMemberName === currentUser.name ? "you" : selectedMemberName}, ordered by urgency and deadline.
@@ -1180,7 +1170,7 @@ export default function TaskBoardApp() {
                       )
                       .map((m) => (
                         <option key={m.id} value={m.name}>
-                          {m.name} ({m.id}) — {m.role}
+                          {m.name} — {m.role}
                         </option>
                       ))}
                   </select>
@@ -1662,7 +1652,7 @@ export default function TaskBoardApp() {
                                 <option value="">Unassigned</option>
                                 {team.map((m) => (
                                   <option key={m.id} value={m.name}>
-                                    {m.name} ({m.id})
+                                    {m.name}
                                   </option>
                                 ))}
                               </select>

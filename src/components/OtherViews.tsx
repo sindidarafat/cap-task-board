@@ -555,7 +555,7 @@ export function ClientsPitchesView({
                           <option value="">None</option>
                           {team.map((m) => (
                             <option key={m.id} value={m.name}>
-                              {m.name} ({m.id})
+                              {m.name}
                             </option>
                           ))}
                         </select>
@@ -832,12 +832,7 @@ export function TeamView({
                           className="border border-[#ccd1de] rounded px-2 py-1 text-[13px]"
                         />
                       ) : (
-                        <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
-                          <span>{m.name}</span>
-                          <span className="text-neutral-400 font-mono-code text-[11px] font-normal">
-                            {m.id}
-                          </span>
-                        </span>
+                        m.name
                       )}
                     </td>
                     <td className="py-3 px-3 font-medium text-[#2d3446]">

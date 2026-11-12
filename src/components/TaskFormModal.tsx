@@ -186,7 +186,7 @@ export default function TaskFormModal({
                 <option value="">Unassigned</option>
                 {team.map((m) => (
                   <option key={m.id} value={m.name}>
-                    {m.name} ({m.id})
+                    {m.name}
                   </option>
                 ))}
               </select>
@@ -202,7 +202,7 @@ export default function TaskFormModal({
                 <option value="">None</option>
                 {team.map((m) => (
                   <option key={m.id} value={m.name}>
-                    {m.name} ({m.id})
+                    {m.name}
                   </option>
                 ))}
               </select>
