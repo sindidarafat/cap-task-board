@@ -8,7 +8,7 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const name = (body.name || "").trim();
-    const email = (body.email || "").trim().toLowerCase();
+    let email = (body.email || "").trim().toLowerCase();
     const password = body.password || "";
     const teamRole = (body.teamRole || "Team Member").trim();
     const requestedAccountType = body.accountType === "ADMIN" ? "ADMIN" : "MEMBER";
@@ -20,6 +20,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (!email.includes("@")) {
+      email = `${email}@cap.com`;
+    }
+
     if (password.length < 4) {
       return NextResponse.json(
         { error: "Password must be at least 4 characters." },
@@ -28,12 +32,49 @@ export async function POST(request: NextRequest) {
     }
 
     const db = await getDb();
-    const exists = db.users.some((u) => u.email.toLowerCase() === email);
-    if (exists) {
-      return NextResponse.json(
-        { error: "An account with this email already exists." },
-        { status: 409 }
-      );
+    const existingUserIndex = db.users.findIndex((u) => u.email.toLowerCase() === email);
+
+    // If account already exists in pre-seeded roster, allow user to set their password and sign in directly
+    if (existingUserIndex >= 0) {
+      const existingUser = db.users[existingUserIndex];
+      const passwordHash = await bcrypt.hash(password, 8);
+      existingUser.passwordHash = passwordHash;
+      if (name) existingUser.name = name;
+      if (teamRole && teamRole !== "Team Member") existingUser.teamRole = teamRole;
+
+      if (requestedAccountType === "ADMIN" && existingUser.role !== "ADMIN") {
+        existingUser.adminRequestStatus = "PENDING";
+        existingUser.requestedAt = new Date().toISOString();
+        appendActivity(db, {
+          actorName: existingUser.name,
+          actorEmail: existingUser.email,
+          action: "Requested Admin Account Approval",
+          details: `${existingUser.name} requested Admin access. Waiting for approval in the Admin Room.`,
+          category: "ADMIN_ROOM",
+        });
+      }
+
+      await saveDb(db);
+      const safeUser = sanitizeUser(existingUser);
+      const token = signSessionToken(safeUser);
+
+      const response = NextResponse.json({
+        user: safeUser,
+        token,
+        message:
+          requestedAccountType === "ADMIN" && existingUser.role !== "ADMIN"
+            ? "Password set! Your request for Admin access is pending approval in the Admin Room."
+            : "Signed in successfully!",
+      });
+
+      response.cookies.set(SESSION_COOKIE_NAME, token, {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        maxAge: 60 * 60 * 24 * 14,
+      });
+
+      return response;
     }
 
     const passwordHash = await bcrypt.hash(password, 8);
@@ -42,7 +83,6 @@ export async function POST(request: NextRequest) {
       (u) => u.role === "ADMIN" && u.adminRequestStatus === "APPROVED"
     );
 
-    // If user requests an Admin account, it must be approved by other admins (unless 0 admins exist)
     const isAutoApprovedFirstAdmin = requestedAccountType === "ADMIN" && !hasExistingAdmins;
 
     // Match with existing team members from Excel data (M-001 to M-014) or create a new Member ID
@@ -75,7 +115,6 @@ export async function POST(request: NextRequest) {
           : db.team.length + 1;
       memberId = `M-${String(nextNum).padStart(3, "0")}`;
 
-      // Automatically register them in the team roster for task assignment
       db.team.push({
         id: memberId,
         name: finalName,
@@ -140,7 +179,7 @@ export async function POST(request: NextRequest) {
       token,
       message:
         requestedAccountType === "ADMIN" && !isAutoApprovedFirstAdmin
-          ? "Account created! You currently have Member (view-only) access until another Admin approves your Admin request in the Admin Room."
+          ? "Account created! You currently have Member (view-only) access until an existing Admin approves your Admin request in the Admin Room."
           : "Account created successfully!",
     });
 

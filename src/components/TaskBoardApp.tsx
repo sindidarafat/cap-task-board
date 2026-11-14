@@ -616,6 +616,56 @@ export default function TaskBoardApp() {
                     className="w-full rounded-lg border border-[#ccd1de] px-3 py-2 text-[14px] text-[#1e2330] focus:outline-none focus:border-[#1f2d5a]"
                   />
                 </div>
+
+                <div className="rounded-lg bg-[#f0f4ff] border border-[#d0dcf5] p-3 text-[12px] text-[#1f2d5a]">
+                  <div className="font-semibold mb-1 flex items-center justify-between">
+                    <span>🔑 Quick Team Logins</span>
+                    <span className="text-[11px] text-[#486581]">Password: <strong>Cap@2026!</strong> (or admin123)</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-1.5 text-[11px] mt-1.5 text-[#334e68]">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAuthEmail("sindid@cap.com");
+                        setAuthPassword("Cap@2026!");
+                      }}
+                      className="text-left px-2 py-1 bg-white rounded border border-[#d0dcf5] hover:border-[#1f2d5a] transition-colors cursor-pointer"
+                    >
+                      <strong className="text-[#0b69a3]">Admin:</strong> Sindid Arafat
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAuthEmail("dola@cap.com");
+                        setAuthPassword("Cap@2026!");
+                      }}
+                      className="text-left px-2 py-1 bg-white rounded border border-[#d0dcf5] hover:border-[#1f2d5a] transition-colors cursor-pointer"
+                    >
+                      <strong className="text-[#0b69a3]">Admin:</strong> Syeda Neelima Dola
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAuthEmail("rakib@cap.com");
+                        setAuthPassword("Cap@2026!");
+                      }}
+                      className="text-left px-2 py-1 bg-white rounded border border-[#d0dcf5] hover:border-[#1f2d5a] transition-colors cursor-pointer"
+                    >
+                      <strong className="text-[#247c40]">Member:</strong> Rakib Islam
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAuthEmail("ragib@cap.com");
+                        setAuthPassword("Cap@2026!");
+                      }}
+                      className="text-left px-2 py-1 bg-white rounded border border-[#d0dcf5] hover:border-[#1f2d5a] transition-colors cursor-pointer"
+                    >
+                      <strong className="text-[#247c40]">Member:</strong> Ragib Shahriar
+                    </button>
+                  </div>
+                </div>
+
                 <button
                   type="submit"
                   disabled={authBusy}

