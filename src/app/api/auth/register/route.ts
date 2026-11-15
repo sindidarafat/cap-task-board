@@ -42,7 +42,16 @@ export async function POST(request: NextRequest) {
       if (name) existingUser.name = name;
       if (teamRole && teamRole !== "Team Member") existingUser.teamRole = teamRole;
 
-      if (requestedAccountType === "ADMIN" && existingUser.role !== "ADMIN") {
+      // Never demote an existing Admin. If user is already an approved admin, keep admin privileges.
+      if (existingUser.role === "ADMIN" && existingUser.adminRequestStatus === "APPROVED") {
+        appendActivity(db, {
+          actorName: existingUser.name,
+          actorEmail: existingUser.email,
+          action: "Updated Account Password",
+          details: `${existingUser.name} (${existingUser.email}) set/updated their Admin password.`,
+          category: "ADMIN_ROOM",
+        });
+      } else if (requestedAccountType === "ADMIN" && existingUser.role !== "ADMIN") {
         existingUser.adminRequestStatus = "PENDING";
         existingUser.requestedAt = new Date().toISOString();
         appendActivity(db, {
@@ -61,10 +70,12 @@ export async function POST(request: NextRequest) {
       const response = NextResponse.json({
         user: safeUser,
         token,
+        passwordHash,
+        userRecord: existingUser,
         message:
           requestedAccountType === "ADMIN" && existingUser.role !== "ADMIN"
             ? "Password set! Your request for Admin access is pending approval in the Admin Room."
-            : "Signed in successfully!",
+            : `Password set successfully! Signed in as ${safeUser.name}.`,
       });
 
       response.cookies.set(SESSION_COOKIE_NAME, token, {
@@ -177,10 +188,12 @@ export async function POST(request: NextRequest) {
     const response = NextResponse.json({
       user: safeUser,
       token,
+      passwordHash,
+      userRecord: newUser,
       message:
         requestedAccountType === "ADMIN" && !isAutoApprovedFirstAdmin
           ? "Account created! You currently have Member (view-only) access until an existing Admin approves your Admin request in the Admin Room."
-          : "Account created successfully!",
+          : `Account created successfully! Signed in as ${safeUser.name}.`,
     });
 
     response.cookies.set(SESSION_COOKIE_NAME, token, {

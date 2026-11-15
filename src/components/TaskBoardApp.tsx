@@ -57,10 +57,96 @@ const STATUS_LIST: TaskStatus[] = [
   "On hold",
 ];
 
+const TEAM_ROSTER_DEFAULTS: Record<
+  string,
+  { email: string; role: "ADMIN" | "MEMBER"; title: string }
+> = {
+  "M-013": { email: "sindid@cap.com", role: "ADMIN", title: "Data Analyst & Admin" },
+  "M-014": { email: "rashed@cap.com", role: "ADMIN", title: "Admin" },
+  "M-010": { email: "dola@cap.com", role: "ADMIN", title: "CEO" },
+  "M-007": { email: "muntasir@cap.com", role: "ADMIN", title: "Key Account Manager (Board Owner)" },
+  "M-001": { email: "amit@cap.com", role: "ADMIN", title: "Creative Director" },
+  "M-009": { email: "rajat@cap.com", role: "ADMIN", title: "MD and Servicing Lead" },
+  "M-011": { email: "manjurul@cap.com", role: "ADMIN", title: "Chief of Strategy" },
+  "M-012": { email: "meem@cap.com", role: "ADMIN", title: "Chief of Finance" },
+  "M-000": { email: "admin@cap.com", role: "ADMIN", title: "System Administrator" },
+  "M-008": { email: "tahmina@cap.com", role: "MEMBER", title: "Client Servicing Executive" },
+  "M-003": { email: "rakib@cap.com", role: "MEMBER", title: "Sr. Visualizer" },
+  "M-004": { email: "rajib@cap.com", role: "MEMBER", title: "Sr. Visualizer" },
+  "M-002": { email: "ragib@cap.com", role: "MEMBER", title: "Copy Supervisor" },
+  "M-005": { email: "laxmi@cap.com", role: "MEMBER", title: "Jr. Visualizer" },
+  "M-006": { email: "hasin@cap.com", role: "MEMBER", title: "Jr. Visualizer" },
+};
+
+function getLocalPasswordHash(email: string): string | undefined {
+  if (typeof window === "undefined" || !email) return undefined;
+  try {
+    const raw = window.localStorage.getItem("cap_user_hashes");
+    if (!raw) return undefined;
+    const map = JSON.parse(raw);
+    return map[email.toLowerCase()];
+  } catch {
+    return undefined;
+  }
+}
+
+function saveLocalPasswordHash(email: string, hash: string): void {
+  if (typeof window === "undefined" || !email || !hash) return;
+  try {
+    const raw = window.localStorage.getItem("cap_user_hashes");
+    const map = raw ? JSON.parse(raw) : {};
+    map[email.toLowerCase()] = hash;
+    window.localStorage.setItem("cap_user_hashes", JSON.stringify(map));
+  } catch {}
+}
+
+function getLocalUserRecords(): Record<string, unknown>[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.localStorage.getItem("cap_local_users");
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveLocalUserRecord(userRecord: Record<string, unknown>): void {
+  if (typeof window === "undefined" || !userRecord || !userRecord.email) return;
+  try {
+    const raw = window.localStorage.getItem("cap_local_users");
+    const list: Record<string, unknown>[] = raw ? JSON.parse(raw) : [];
+    const idx = list.findIndex(
+      (u) =>
+        String(u.email || "").toLowerCase() ===
+        String(userRecord.email || "").toLowerCase()
+    );
+    if (idx >= 0) {
+      list[idx] = { ...list[idx], ...userRecord };
+    } else {
+      list.push(userRecord);
+    }
+    window.localStorage.setItem("cap_local_users", JSON.stringify(list));
+  } catch {}
+}
+
 export default function TaskBoardApp() {
+  const [currentUser, setCurrentUser] = useState<SafeUserAccount | null>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = window.localStorage.getItem("cap_current_user");
+        if (saved) return JSON.parse(saved) as SafeUserAccount;
+      } catch {}
+    }
+    return null;
+  });
+  const [sessionToken, setSessionToken] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      return window.localStorage.getItem("cap_session_token") || "";
+    }
+    return "";
+  });
+
   const [loading, setLoading] = useState(true);
-  const [currentUser, setCurrentUser] = useState<SafeUserAccount | null>(null);
-  const [sessionToken, setSessionToken] = useState<string>("");
 
   const [tasks, setTasks] = useState<TaskRecord[]>([]);
   const [clients, setClients] = useState<ClientRecord[]>([]);
@@ -74,7 +160,12 @@ export default function TaskBoardApp() {
 
   // Auth form states
   const [authMode, setAuthMode] = useState<"login" | "register">("login");
-  const [authEmail, setAuthEmail] = useState("");
+  const [authEmail, setAuthEmail] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      return window.localStorage.getItem("cap_saved_email") || "";
+    }
+    return "";
+  });
   const [authPassword, setAuthPassword] = useState("");
   const [authName, setAuthName] = useState("");
   const [authTeamRole, setAuthTeamRole] = useState("");
@@ -120,6 +211,11 @@ export default function TaskBoardApp() {
         headers.set("x-cap-token", savedToken);
       }
 
+      const localUsers = getLocalUserRecords();
+      if (localUsers.length > 0) {
+        headers.set("x-cap-client-users", JSON.stringify(localUsers));
+      }
+
       const res = await fetch(url, {
         ...options,
         headers,
@@ -138,6 +234,9 @@ export default function TaskBoardApp() {
       const data = await apiFetch("/api/board");
       if (data.user) {
         setCurrentUser(data.user);
+        if (typeof window !== "undefined") {
+          window.localStorage.setItem("cap_current_user", JSON.stringify(data.user));
+        }
       }
       setTasks(data.tasks || []);
       setClients(data.clients || []);
@@ -291,20 +390,42 @@ export default function TaskBoardApp() {
      AUTHENTICATION HANDLERS
      ========================================================= */
   const handleLogin = async (emailInput?: string, passwordInput?: string) => {
-    const emailToUse = emailInput ?? authEmail;
+    const emailToUse = (emailInput ?? authEmail).trim().toLowerCase();
     const passwordToUse = passwordInput ?? authPassword;
     setAuthError("");
     setAuthBusy(true);
     try {
+      const clientPasswordHash = getLocalPasswordHash(emailToUse);
+      const localUsers = getLocalUserRecords();
+      const clientUser = localUsers.find(
+        (u) => String(u.email || "").toLowerCase() === emailToUse
+      );
+
       const data = await apiFetch("/api/auth/login", {
         method: "POST",
-        body: JSON.stringify({ email: emailToUse, password: passwordToUse }),
+        body: JSON.stringify({
+          email: emailToUse,
+          password: passwordToUse,
+          clientPasswordHash,
+          clientUser,
+        }),
       });
+
       if (data.token) {
         setSessionToken(data.token);
         window.localStorage.setItem("cap_session_token", data.token);
       }
-      setCurrentUser(data.user);
+      if (data.user) {
+        setCurrentUser(data.user);
+        window.localStorage.setItem("cap_current_user", JSON.stringify(data.user));
+      }
+      window.localStorage.setItem("cap_saved_email", emailToUse);
+      if (data.passwordHash) {
+        saveLocalPasswordHash(emailToUse, data.passwordHash);
+      }
+      if (data.userRecord) {
+        saveLocalUserRecord(data.userRecord);
+      }
       await fetchBoard();
     } catch (err: unknown) {
       setAuthError(err instanceof Error ? err.message : "Sign in failed.");
@@ -336,7 +457,17 @@ export default function TaskBoardApp() {
         setSessionToken(data.token);
         window.localStorage.setItem("cap_session_token", data.token);
       }
-      setCurrentUser(data.user);
+      if (data.user) {
+        setCurrentUser(data.user);
+        window.localStorage.setItem("cap_current_user", JSON.stringify(data.user));
+      }
+      window.localStorage.setItem("cap_saved_email", authEmail);
+      if (data.passwordHash) {
+        saveLocalPasswordHash(authEmail, data.passwordHash);
+      }
+      if (data.userRecord) {
+        saveLocalUserRecord(data.userRecord);
+      }
       await fetchBoard();
       if (data.message) {
         showToast(data.message);
@@ -349,8 +480,11 @@ export default function TaskBoardApp() {
   };
 
   const handleLogout = async () => {
-    await fetch("/api/auth/logout", { method: "POST" });
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+    } catch {}
     window.localStorage.removeItem("cap_session_token");
+    window.localStorage.removeItem("cap_current_user");
     setSessionToken("");
     setCurrentUser(null);
   };
@@ -572,7 +706,7 @@ export default function TaskBoardApp() {
                     : "border-transparent text-[#525b70] hover:text-[#1f2d5a]"
                 }`}
               >
-                Create account
+                Create account / Set password
               </button>
             </div>
 
@@ -596,6 +730,8 @@ export default function TaskBoardApp() {
                   </label>
                   <input
                     type="email"
+                    name="email"
+                    autoComplete="username"
                     required
                     placeholder="name@cap.com"
                     value={authEmail}
@@ -604,66 +740,31 @@ export default function TaskBoardApp() {
                   />
                 </div>
                 <div>
-                  <label className="block text-[13px] font-semibold text-[#1f2d5a] mb-1">
-                    Password
-                  </label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-[13px] font-semibold text-[#1f2d5a]">
+                      Password
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAuthMode("register");
+                        setAuthError("");
+                      }}
+                      className="text-[12px] text-[#0b69a3] hover:underline cursor-pointer font-medium"
+                    >
+                      Set or reset password?
+                    </button>
+                  </div>
                   <input
                     type="password"
+                    name="password"
+                    autoComplete="current-password"
                     required
                     placeholder="••••••••"
                     value={authPassword}
                     onChange={(e) => setAuthPassword(e.target.value)}
                     className="w-full rounded-lg border border-[#ccd1de] px-3 py-2 text-[14px] text-[#1e2330] focus:outline-none focus:border-[#1f2d5a]"
                   />
-                </div>
-
-                <div className="rounded-lg bg-[#f0f4ff] border border-[#d0dcf5] p-3 text-[12px] text-[#1f2d5a]">
-                  <div className="font-semibold mb-1 flex items-center justify-between">
-                    <span>🔑 Quick Team Logins</span>
-                    <span className="text-[11px] text-[#486581]">Password: <strong>Cap@2026!</strong> (or admin123)</span>
-                  </div>
-                  <div className="grid grid-cols-2 gap-1.5 text-[11px] mt-1.5 text-[#334e68]">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setAuthEmail("sindid@cap.com");
-                        setAuthPassword("Cap@2026!");
-                      }}
-                      className="text-left px-2 py-1 bg-white rounded border border-[#d0dcf5] hover:border-[#1f2d5a] transition-colors cursor-pointer"
-                    >
-                      <strong className="text-[#0b69a3]">Admin:</strong> Sindid Arafat
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setAuthEmail("dola@cap.com");
-                        setAuthPassword("Cap@2026!");
-                      }}
-                      className="text-left px-2 py-1 bg-white rounded border border-[#d0dcf5] hover:border-[#1f2d5a] transition-colors cursor-pointer"
-                    >
-                      <strong className="text-[#0b69a3]">Admin:</strong> Syeda Neelima Dola
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setAuthEmail("rakib@cap.com");
-                        setAuthPassword("Cap@2026!");
-                      }}
-                      className="text-left px-2 py-1 bg-white rounded border border-[#d0dcf5] hover:border-[#1f2d5a] transition-colors cursor-pointer"
-                    >
-                      <strong className="text-[#247c40]">Member:</strong> Rakib Islam
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setAuthEmail("ragib@cap.com");
-                        setAuthPassword("Cap@2026!");
-                      }}
-                      className="text-left px-2 py-1 bg-white rounded border border-[#d0dcf5] hover:border-[#1f2d5a] transition-colors cursor-pointer"
-                    >
-                      <strong className="text-[#247c40]">Member:</strong> Ragib Shahriar
-                    </button>
-                  </div>
                 </div>
 
                 <button
@@ -690,9 +791,28 @@ export default function TaskBoardApp() {
                         if (found) {
                           setAuthName(found.name);
                           setAuthTeamRole(found.role);
-                          if (!authEmail) {
+
+                          const defaults = TEAM_ROSTER_DEFAULTS[found.id];
+                          const matchedUser = users.find(
+                            (u) =>
+                              u.memberId === found.id ||
+                              u.name.toLowerCase() === found.name.toLowerCase()
+                          );
+
+                          if (defaults) {
+                            setAuthEmail(defaults.email);
+                            setAuthAccountType(defaults.role);
+                            if (defaults.title) setAuthTeamRole(defaults.title);
+                          } else if (matchedUser) {
+                            setAuthEmail(matchedUser.email);
+                            setAuthAccountType(matchedUser.role);
+                            if (matchedUser.teamRole) setAuthTeamRole(matchedUser.teamRole);
+                          } else {
                             const first = found.name.split(" ")[0].toLowerCase();
                             setAuthEmail(`${first}@cap.com`);
+                            const isLikelyAdmin =
+                              /admin|director|ceo|md|chief|lead/i.test(found.role);
+                            setAuthAccountType(isLikelyAdmin ? "ADMIN" : "MEMBER");
                           }
                         }
                       }
@@ -715,6 +835,8 @@ export default function TaskBoardApp() {
                   </label>
                   <input
                     type="text"
+                    name="name"
+                    autoComplete="name"
                     required
                     placeholder="Your name"
                     value={authName}
@@ -728,6 +850,8 @@ export default function TaskBoardApp() {
                   </label>
                   <input
                     type="email"
+                    name="email"
+                    autoComplete="email"
                     required
                     placeholder="you@cap.com"
                     value={authEmail}
@@ -742,6 +866,8 @@ export default function TaskBoardApp() {
                     </label>
                     <input
                       type="password"
+                      name="password"
+                      autoComplete="new-password"
                       required
                       placeholder="Min 4 chars"
                       value={authPassword}
@@ -772,19 +898,37 @@ export default function TaskBoardApp() {
                     onChange={(e) =>
                       setAuthAccountType(e.target.value as "MEMBER" | "ADMIN")
                     }
-                    className="w-full rounded-lg border border-[#ccd1de] px-3 py-2 text-[13.5px] text-[#1e2330] focus:outline-none focus:border-[#1f2d5a]"
+                    className="w-full rounded-lg border border-[#ccd1de] px-3 py-2 text-[13.5px] text-[#1e2330] focus:outline-none focus:border-[#1f2d5a] bg-white"
                   >
                     <option value="MEMBER">Member (view only)</option>
                     <option value="ADMIN">Admin (requires approval from an existing Admin)</option>
                   </select>
                 </div>
 
+                {selectedTeamMemberId && selectedTeamMemberId !== "custom" && (
+                  <div className="p-3 rounded-lg bg-[#f0f4ff] border border-[#d0dcf5] text-[12.5px] text-[#1f2d5a] space-y-1">
+                    <div className="font-semibold flex items-center gap-1.5">
+                      <span>🔑</span>
+                      <span>
+                        Setting password for: <strong>{authName}</strong> ({authAccountType === "ADMIN" ? "Admin" : "Member"})
+                      </span>
+                    </div>
+                    <p className="text-[11.5px] text-[#486581]">
+                      Once saved, your password will be stored securely so you can sign in anytime with these credentials.
+                    </p>
+                  </div>
+                )}
+
                 <button
                   type="submit"
                   disabled={authBusy}
                   className="w-full py-2.5 rounded-lg bg-[#1f2d5a] hover:bg-[#2a3a6e] text-white font-semibold text-[14px] transition-colors cursor-pointer disabled:opacity-50"
                 >
-                  {authBusy ? "Creating..." : "Create account"}
+                  {authBusy
+                    ? "Saving credentials..."
+                    : selectedTeamMemberId && selectedTeamMemberId !== "custom"
+                    ? "Set Password & Sign In"
+                    : "Create Account & Sign In"}
                 </button>
               </form>
             )}

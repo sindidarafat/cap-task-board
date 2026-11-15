@@ -2,10 +2,43 @@ import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser, isApprovedAdmin } from "@/lib/auth";
 import { appendActivity, getDb, sanitizeUser, saveDb } from "@/lib/db";
 import { createInitialDatabase } from "@/lib/seed-data";
+import { UserAccount } from "@/lib/types";
 
 export async function GET(request: NextRequest) {
-  const user = await getCurrentUser(request);
   const db = await getDb();
+
+  // If client passed local users/credentials header, sync them into db.users if missing or updated
+  const clientUsersHeader = request.headers.get("x-cap-client-users");
+  if (clientUsersHeader) {
+    try {
+      const clientUsers = JSON.parse(clientUsersHeader) as UserAccount[];
+      if (Array.isArray(clientUsers)) {
+        let changed = false;
+        for (const cu of clientUsers) {
+          if (!cu || !cu.email) continue;
+          const idx = db.users.findIndex(
+            (u) => u.email.toLowerCase() === cu.email.toLowerCase()
+          );
+          if (idx >= 0) {
+            if (cu.passwordHash && db.users[idx].passwordHash !== cu.passwordHash) {
+              db.users[idx].passwordHash = cu.passwordHash;
+              changed = true;
+            }
+          } else {
+            db.users.push(cu);
+            changed = true;
+          }
+        }
+        if (changed) {
+          await saveDb(db);
+        }
+      }
+    } catch {
+      // ignore parse errors
+    }
+  }
+
+  const user = await getCurrentUser(request);
 
   return NextResponse.json({
     user,

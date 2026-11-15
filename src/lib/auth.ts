@@ -36,7 +36,21 @@ export function verifySessionToken(token: string | undefined | null): SafeUserAc
 }
 
 export async function getCurrentUser(request: NextRequest): Promise<SafeUserAccount | null> {
-  const cookieToken = request.cookies.get(SESSION_COOKIE_NAME)?.value;
+  let cookieToken: string | undefined = undefined;
+  try {
+    cookieToken = request.cookies?.get(SESSION_COOKIE_NAME)?.value;
+  } catch {
+    // ignore cookie parse error
+  }
+
+  if (!cookieToken) {
+    const rawCookie = request.headers.get("cookie");
+    if (rawCookie) {
+      const match = rawCookie.match(new RegExp(`(?:^|;\\s*)${SESSION_COOKIE_NAME}=([^;]*)`));
+      if (match) cookieToken = decodeURIComponent(match[1]);
+    }
+  }
+
   const headerToken = request.headers.get("x-cap-token");
   const token = cookieToken || headerToken;
   const tokenUser = verifySessionToken(token);

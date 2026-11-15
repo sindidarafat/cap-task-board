@@ -952,7 +952,7 @@
       "memberId": "M-014",
       "name": "Rashed",
       "email": "rashed@cap.com",
-      "passwordHash": "$2b$08$j2VRPPBA1FJLtjCqOB6sNebAypGAFUAOIkQaFFeEqbWPlGNFyvfp2",
+      "passwordHash": "$2b$08$Qd.XcIQoQUIk1hizPhRar.X7mpgdsPuCSEXCY9tyBTXoSijoN4L7i",
       "role": "ADMIN",
       "adminRequestStatus": "APPROVED",
       "teamRole": "Admin",
@@ -1075,6 +1075,15 @@
     }
   ],
   "activityLog": [
+    {
+      "id": "ACT-006",
+      "timestamp": "2026-11-15T06:16:34.430Z",
+      "actorName": "Rashed",
+      "actorEmail": "rashed@cap.com",
+      "action": "Updated Account Password",
+      "details": "Rashed (rashed@cap.com) set/updated their Admin password.",
+      "category": "ADMIN_ROOM"
+    },
     {
       "id": "ACT-005",
       "timestamp": "2026-11-11T10:49:45.507Z",

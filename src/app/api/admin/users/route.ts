@@ -203,6 +203,33 @@ export async function POST(request: NextRequest) {
     });
   }
 
+  if (action === "reset_password") {
+    const target = db.users.find((u) => u.id === targetUserId);
+    if (!target) {
+      return NextResponse.json({ error: "User not found." }, { status: 404 });
+    }
+    const newPassword = body.password || "";
+    if (newPassword.length < 4) {
+      return NextResponse.json(
+        { error: "Password must be at least 4 characters long." },
+        { status: 400 }
+      );
+    }
+    target.passwordHash = await bcrypt.hash(newPassword, 8);
+    appendActivity(db, {
+      actorName: currentUser!.name,
+      actorEmail: currentUser!.email,
+      action: `Admin Reset Password: ${target.name}`,
+      details: `${currentUser!.name} reset the password for ${target.name} (${target.email}).`,
+      category: "ADMIN_ROOM",
+    });
+    await saveDb(db);
+    return NextResponse.json({
+      users: db.users.map(sanitizeUser),
+      activityLog: db.activityLog,
+    });
+  }
+
   if (action === "delete_user") {
     const target = db.users.find((u) => u.id === targetUserId);
     if (!target) {

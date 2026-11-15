@@ -14,25 +14,35 @@ const LOCAL_DB_FILE = path.join(LOCAL_DATA_DIR, "db.json");
 const TMP_DB_FILE = path.join(os.tmpdir(), "cap-taskboard-db.json");
 
 function readFromDisk(): DatabaseSchema | null {
-  try {
-    if (fs.existsSync(TMP_DB_FILE)) {
-      const raw = fs.readFileSync(TMP_DB_FILE, "utf-8");
-      return JSON.parse(raw) as DatabaseSchema;
-    }
-  } catch {
-    // ignore tmp read errors
-  }
+  let localData: DatabaseSchema | null = null;
+  let localMtime = 0;
+  let tmpData: DatabaseSchema | null = null;
+  let tmpMtime = 0;
 
   try {
     if (fs.existsSync(LOCAL_DB_FILE)) {
+      localMtime = fs.statSync(LOCAL_DB_FILE).mtimeMs;
       const raw = fs.readFileSync(LOCAL_DB_FILE, "utf-8");
-      return JSON.parse(raw) as DatabaseSchema;
+      localData = JSON.parse(raw) as DatabaseSchema;
     }
   } catch {
     // ignore local read errors
   }
 
-  return null;
+  try {
+    if (fs.existsSync(TMP_DB_FILE)) {
+      tmpMtime = fs.statSync(TMP_DB_FILE).mtimeMs;
+      const raw = fs.readFileSync(TMP_DB_FILE, "utf-8");
+      tmpData = JSON.parse(raw) as DatabaseSchema;
+    }
+  } catch {
+    // ignore tmp read errors
+  }
+
+  if (localData && tmpData) {
+    return tmpMtime > localMtime ? tmpData : localData;
+  }
+  return localData || tmpData || null;
 }
 
 function writeToDisk(data: DatabaseSchema): void {
@@ -92,27 +102,47 @@ async function writeToVercelKV(data: DatabaseSchema): Promise<void> {
 }
 
 export async function getDb(): Promise<DatabaseSchema> {
+  const initial = createInitialDatabase();
+  let db: DatabaseSchema | null = null;
+
   const kvData = await readFromVercelKV();
   if (kvData) {
-    globalThis.__capDbCache = kvData;
-    return kvData;
+    db = kvData;
+  } else if (globalThis.__capDbCache) {
+    db = globalThis.__capDbCache;
+  } else {
+    const diskData = readFromDisk();
+    if (diskData) {
+      db = diskData;
+    } else {
+      db = initial;
+    }
   }
 
-  if (globalThis.__capDbCache) {
-    return globalThis.__capDbCache;
+  // Guarantee that every seed team account is present in db.users
+  if (Array.isArray(db.users)) {
+    for (const initUser of initial.users) {
+      const idx = db.users.findIndex(
+        (u) =>
+          u.email.toLowerCase() === initUser.email.toLowerCase() ||
+          u.id === initUser.id
+      );
+      if (idx === -1) {
+        db.users.push(initUser);
+      } else {
+        // If the existing user was pre-seeded as admin, make sure their role stays ADMIN
+        if (initUser.role === "ADMIN" && db.users[idx].role !== "ADMIN") {
+          db.users[idx].role = "ADMIN";
+          db.users[idx].adminRequestStatus = "APPROVED";
+        }
+      }
+    }
+  } else {
+    db.users = initial.users;
   }
 
-  const diskData = readFromDisk();
-  if (diskData) {
-    globalThis.__capDbCache = diskData;
-    return diskData;
-  }
-
-  const initial = createInitialDatabase();
-  globalThis.__capDbCache = initial;
-  writeToDisk(initial);
-  await writeToVercelKV(initial);
-  return initial;
+  globalThis.__capDbCache = db;
+  return db;
 }
 
 export async function saveDb(data: DatabaseSchema): Promise<DatabaseSchema> {
