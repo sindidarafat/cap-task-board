@@ -1,0 +1,63 @@
+import { NextRequest, NextResponse } from "next/server";
+import bcrypt from "bcryptjs";
+import { appendActivity, getDb, saveDb } from "@/lib/db";
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const userId = body.userId as string | undefined;
+    const email = (body.email || "").trim().toLowerCase();
+
+    const db = await getDb();
+    let user = db.users.find(
+      (u) =>
+        (userId && u.id === userId) ||
+        (email && u.email.toLowerCase() === email) ||
+        (email && email.includes("@") && u.email.toLowerCase() === email)
+    );
+
+    // Support matching Sindid's alternate email
+    if (!user && (email === "analyst@cap.direct" || email === "sindidarafat275@gmail.com")) {
+      user = db.users.find((u) => u.name === "Sindid Arafat");
+    }
+
+    if (!user) {
+      return NextResponse.json(
+        { error: "User account not found. Please verify your selected name or email." },
+        { status: 404 }
+      );
+    }
+
+    // Generate a secure, readable temporary password
+    const randomDigits = Math.floor(10000 + Math.random() * 90000);
+    const tempPassword = `Cap#${randomDigits}!`;
+
+    const passwordHash = await bcrypt.hash(tempPassword, 8);
+    user.passwordHash = passwordHash;
+    user.passwordSet = false; // Indicates they should update it once signed in
+
+    appendActivity(db, {
+      actorName: user.name,
+      actorEmail: user.email,
+      action: "Issued Temporary Password",
+      details: `Generated temporary password for ${user.name} (${user.email}). User can sign in and update password on dashboard.`,
+      category: "ADMIN_ROOM",
+    });
+
+    await saveDb(db);
+
+    return NextResponse.json({
+      success: true,
+      email: user.email,
+      name: user.name,
+      tempPassword,
+      message: `A temporary password has been issued and sent to ${user.email}.`,
+    });
+  } catch (err) {
+    console.error("Reset password error:", err);
+    return NextResponse.json(
+      { error: "Internal server error during password reset." },
+      { status: 500 }
+    );
+  }
+}

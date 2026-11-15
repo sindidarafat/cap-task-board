@@ -28,6 +28,7 @@ import {
 } from "./BadgeHelpers";
 import TaskFormModal from "./TaskFormModal";
 import ExportCsvModal from "./ExportCsvModal";
+import UpdatePasswordModal from "./UpdatePasswordModal";
 import AdminRoomView from "./AdminRoomView";
 import StickyTable from "./StickyTable";
 import {
@@ -59,26 +60,77 @@ const STATUS_LIST: TaskStatus[] = [
   "On hold",
 ];
 
+export interface OfficialMemberItem {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  role: "ADMIN" | "MEMBER";
+  title: string;
+  aliases: string[];
+}
+
+export const OFFICIAL_TEAM_ROSTER: OfficialMemberItem[] = [
+  { id: "M-009", name: "Tanmay paul", email: "md@cap.direct", phone: "+8801681436919", role: "ADMIN", title: "MD and Servicing Lead", aliases: ["Rajat Tanmay", "Tanmay paul"] },
+  { id: "M-010", name: "Syeda Nilima Dola", email: "ceo@cap.direct", phone: "+8801757629895", role: "ADMIN", title: "CEO", aliases: ["Syeda Neelima Dola", "Syeda Nilima Dola", "Neelima Dola"] },
+  { id: "M-012", name: "Meem Arafat Manab", email: "data@cap.direct", phone: "+353851522813", role: "ADMIN", title: "Chief of Finance", aliases: ["Meem Arafat Manab", "Meem Arafat"] },
+  { id: "M-011", name: "Manjurul Mahmud", email: "strategy@cap.direct", phone: "+4915755531545", role: "ADMIN", title: "Chief of Strategy", aliases: ["Manjurul Mahmud"] },
+  { id: "M-001", name: "Amit Pramanik", email: "creative@cap.direct", phone: "+8801840783226", role: "ADMIN", title: "Creative Director", aliases: ["Amit Pramanik"] },
+  { id: "M-015", name: "Hasib Mohammad Ashiq", email: "office@cap.direct", phone: "+8801672824324", role: "ADMIN", title: "Admin / Office Lead", aliases: ["Hasib Mohammad Ashiq", "Hasib Ashiq"] },
+  { id: "M-008", name: "Tahmina Taj", email: "client.service@cap.direct", phone: "+8801643116621", role: "MEMBER", title: "Client Servicing Executive", aliases: ["Tahmina Taj"] },
+  { id: "M-014", name: "Rashedul Islam", email: "accounts@cap.direct", phone: "+8801805033153", role: "ADMIN", title: "Admin", aliases: ["Rashed", "Rashedul Islam"] },
+  { id: "M-002", name: "Ragib Shahriar", email: "writer@cap.direct", phone: "+8801787623050", role: "MEMBER", title: "Copy Supervisor", aliases: ["Ragib Shahriar"] },
+  { id: "M-006", name: "Hasin Ishraq Bijoy", email: "visualizer@cap.direct", phone: "+8801786039319", role: "MEMBER", title: "Video Editor", aliases: ["Hasin Bijoy", "Hasin Ishraq Bijoy"] },
+  { id: "M-003", name: "Md. Rakib-ul-Islam", email: "design@cap.direct", phone: "+8801955688057", role: "MEMBER", title: "Sr. Visualizer", aliases: ["Rakib Islam", "Md. Rakib-ul-Islam"] },
+  { id: "M-007", name: "Md. Montasir Mannan", email: "operations@cap.direct", phone: "+8801712888824", role: "ADMIN", title: "Key Account Manager (Board Owner)", aliases: ["Muntasir Mannan", "Md. Montasir Mannan"] },
+  { id: "M-005", name: "Nusrat Laxme", email: "nusratlaxme123@gmail.com", phone: "+8801628586049", role: "MEMBER", title: "Jr. Visualizer", aliases: ["Laxmi", "Nusrat Laxme"] },
+  { id: "M-013", name: "Sindid Arafat", email: "sindidarafat275@gmail.com", phone: "+8801735807816", role: "ADMIN", title: "Data Analyst & Admin", aliases: ["Sindid Arafat"] },
+  { id: "M-004", name: "Rajib Hossen", email: "rajibakash@gmail.com", phone: "+8801681795542", role: "MEMBER", title: "Sr. Visualizer", aliases: ["Rajib Akash", "Rajib Hossen"] },
+  { id: "M-000", name: "CAP Admin", email: "admin@cap.direct", phone: "+8801700000000", role: "ADMIN", title: "System Administrator", aliases: ["CAP Admin", "Admin"] },
+];
+
 const TEAM_ROSTER_DEFAULTS: Record<
   string,
-  { email: string; role: "ADMIN" | "MEMBER"; title: string }
-> = {
-  "M-013": { email: "sindid@cap.com", role: "ADMIN", title: "Data Analyst & Admin" },
-  "M-014": { email: "rashed@cap.com", role: "ADMIN", title: "Admin" },
-  "M-010": { email: "dola@cap.com", role: "ADMIN", title: "CEO" },
-  "M-007": { email: "muntasir@cap.com", role: "ADMIN", title: "Key Account Manager (Board Owner)" },
-  "M-001": { email: "amit@cap.com", role: "ADMIN", title: "Creative Director" },
-  "M-009": { email: "rajat@cap.com", role: "ADMIN", title: "MD and Servicing Lead" },
-  "M-011": { email: "manjurul@cap.com", role: "ADMIN", title: "Chief of Strategy" },
-  "M-012": { email: "meem@cap.com", role: "ADMIN", title: "Chief of Finance" },
-  "M-000": { email: "admin@cap.com", role: "ADMIN", title: "System Administrator" },
-  "M-008": { email: "tahmina@cap.com", role: "MEMBER", title: "Client Servicing Executive" },
-  "M-003": { email: "rakib@cap.com", role: "MEMBER", title: "Sr. Visualizer" },
-  "M-004": { email: "rajib@cap.com", role: "MEMBER", title: "Sr. Visualizer" },
-  "M-002": { email: "ragib@cap.com", role: "MEMBER", title: "Copy Supervisor" },
-  "M-005": { email: "laxmi@cap.com", role: "MEMBER", title: "Jr. Visualizer" },
-  "M-006": { email: "hasin@cap.com", role: "MEMBER", title: "Jr. Visualizer" },
-};
+  { email: string; role: "ADMIN" | "MEMBER"; title: string; phone: string }
+> = Object.fromEntries(
+  OFFICIAL_TEAM_ROSTER.map((m) => [
+    m.id,
+    { email: m.email, role: m.role, title: m.title, phone: m.phone },
+  ])
+);
+
+function matchPersonWithAliases(
+  taskPerson: string,
+  targetName: string,
+  teamRoster: TeamMember[]
+): boolean {
+  if (!taskPerson || !targetName) return false;
+  const p = taskPerson.trim().toLowerCase();
+  const t = targetName.trim().toLowerCase();
+  if (p === t) return true;
+
+  const targetMember = teamRoster.find(
+    (m) =>
+      m.name.toLowerCase() === t ||
+      m.aliases?.some((a) => a.toLowerCase() === t)
+  );
+  if (targetMember) {
+    if (targetMember.name.toLowerCase() === p) return true;
+    if (targetMember.aliases?.some((a) => a.toLowerCase() === p)) return true;
+  }
+
+  const taskMember = teamRoster.find(
+    (m) =>
+      m.name.toLowerCase() === p ||
+      m.aliases?.some((a) => a.toLowerCase() === p)
+  );
+  if (taskMember) {
+    if (taskMember.name.toLowerCase() === t) return true;
+    if (taskMember.aliases?.some((a) => a.toLowerCase() === t)) return true;
+  }
+
+  return false;
+}
 
 function getLocalPasswordHash(email: string): string | undefined {
   if (typeof window === "undefined" || !email) return undefined;
@@ -160,8 +212,9 @@ export default function TaskBoardApp() {
   const [referenceDate, setReferenceDate] = useState<string>("2026-11-15");
   const [activeTab, setActiveTab] = useState<ActiveTab>("today");
 
-  // Auth form states
-  const [authMode, setAuthMode] = useState<"login" | "register">("login");
+  // Auth redesign states: 2 options (1- existing user, 2- new user)
+  const [authOption, setAuthOption] = useState<"existing" | "new">("existing");
+  const [selectedExistingMemberId, setSelectedExistingMemberId] = useState<string>("M-013"); // Sindid Arafat by default
   const [authEmail, setAuthEmail] = useState<string>(() => {
     if (typeof window !== "undefined") {
       return window.localStorage.getItem("cap_saved_email") || "";
@@ -169,12 +222,21 @@ export default function TaskBoardApp() {
     return "";
   });
   const [authPassword, setAuthPassword] = useState("");
+  const [authRetypePassword, setAuthRetypePassword] = useState("");
+  const [authPhone, setAuthPhone] = useState("");
   const [authName, setAuthName] = useState("");
   const [authTeamRole, setAuthTeamRole] = useState("");
   const [authAccountType, setAuthAccountType] = useState<"MEMBER" | "ADMIN">("MEMBER");
-  const [selectedTeamMemberId, setSelectedTeamMemberId] = useState("");
   const [authError, setAuthError] = useState("");
   const [authBusy, setAuthBusy] = useState(false);
+  const [resetSuccessInfo, setResetSuccessInfo] = useState<{
+    tempPassword: string;
+    email: string;
+    name: string;
+  } | null>(null);
+
+  // Update password modal on dashboard
+  const [showUpdatePasswordModal, setShowUpdatePasswordModal] = useState(false);
 
   // Task Log filters & modals
   const [searchQuery, setSearchQuery] = useState("");
@@ -316,12 +378,12 @@ export default function TaskBoardApp() {
   const selectedMemberName = myWorksMember || currentUser?.name || "";
 
   const myWorksData = useMemo(() => {
-    const target = selectedMemberName.trim().toLowerCase();
+    const target = selectedMemberName.trim();
     const ongoingOwned = computedTasks
       .filter(
         (t) =>
           t.status !== "Done" &&
-          t.owner.trim().toLowerCase() === target
+          matchPersonWithAliases(t.owner, target, team)
       )
       .sort((a, b) => (a.todayRank ?? 999) - (b.todayRank ?? 999));
 
@@ -329,14 +391,14 @@ export default function TaskBoardApp() {
       .filter(
         (t) =>
           t.status !== "Done" &&
-          t.reviewer.trim().toLowerCase() === target
+          matchPersonWithAliases(t.reviewer, target, team)
       )
       .sort((a, b) => (a.todayRank ?? 999) - (b.todayRank ?? 999));
 
     const completedOwned = computedTasks.filter(
       (t) =>
         t.status === "Done" &&
-        t.owner.trim().toLowerCase() === target
+        matchPersonWithAliases(t.owner, target, team)
     );
 
     const overdueCount = ongoingOwned.filter((t) => t.flag === "Overdue").length;
@@ -352,7 +414,7 @@ export default function TaskBoardApp() {
     const currentUserOngoingCount = computedTasks.filter(
       (t) =>
         t.status !== "Done" &&
-        t.owner.trim().toLowerCase() === (currentUser?.name || "").trim().toLowerCase()
+        matchPersonWithAliases(t.owner, currentUser?.name || "", team)
     ).length;
 
     return {
@@ -365,12 +427,12 @@ export default function TaskBoardApp() {
       openEstHours,
       currentUserOngoingCount,
     };
-  }, [computedTasks, selectedMemberName, currentUser]);
+  }, [computedTasks, selectedMemberName, currentUser, team]);
 
   const filteredTasks = useMemo(() => {
     return computedTasks.filter((t) => {
       if (filterClient !== "ALL" && t.client !== filterClient) return false;
-      if (filterOwner !== "ALL" && t.owner !== filterOwner) return false;
+      if (filterOwner !== "ALL" && !matchPersonWithAliases(t.owner, filterOwner, team)) return false;
       if (filterStatus !== "ALL" && t.status !== filterStatus) return false;
       if (filterFlag !== "ALL" && t.flag !== filterFlag) return false;
       if (filterWorkType !== "ALL" && t.workType !== filterWorkType) return false;
@@ -389,6 +451,7 @@ export default function TaskBoardApp() {
     filterFlag,
     filterWorkType,
     searchQuery,
+    team,
   ]);
 
   /* =========================================================
@@ -439,25 +502,36 @@ export default function TaskBoardApp() {
     }
   };
 
-  const handleRegister = async (e: React.FormEvent) => {
+  const handleExistingMemberSetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setAuthError("");
+    const selectedOfficial =
+      OFFICIAL_TEAM_ROSTER.find((m) => m.id === selectedExistingMemberId) ||
+      OFFICIAL_TEAM_ROSTER[0];
+
+    if (!authPassword || authPassword.length < 4) {
+      setAuthError("Password must be at least 4 characters.");
+      return;
+    }
+    if (authPassword !== authRetypePassword) {
+      setAuthError("Passwords do not match. Please retype carefully.");
+      return;
+    }
+
     setAuthBusy(true);
     try {
       const data = await apiFetch("/api/auth/register", {
         method: "POST",
         body: JSON.stringify({
-          name: authName,
-          email: authEmail,
+          action: "set_password",
+          memberId: selectedOfficial.id,
+          name: selectedOfficial.name,
+          email: selectedOfficial.email,
+          phone: selectedOfficial.phone,
           password: authPassword,
-          teamRole: authTeamRole || (authAccountType === "ADMIN" ? "Admin" : "Member"),
-          accountType: authAccountType,
-          memberId:
-            selectedTeamMemberId && selectedTeamMemberId !== "custom"
-              ? selectedTeamMemberId
-              : undefined,
         }),
       });
+
       if (data.token) {
         setSessionToken(data.token);
         window.localStorage.setItem("cap_session_token", data.token);
@@ -466,17 +540,113 @@ export default function TaskBoardApp() {
         setCurrentUser(data.user);
         window.localStorage.setItem("cap_current_user", JSON.stringify(data.user));
       }
-      window.localStorage.setItem("cap_saved_email", authEmail);
+      window.localStorage.setItem("cap_saved_email", selectedOfficial.email);
       if (data.passwordHash) {
-        saveLocalPasswordHash(authEmail, data.passwordHash);
+        saveLocalPasswordHash(selectedOfficial.email, data.passwordHash);
       }
       if (data.userRecord) {
         saveLocalUserRecord(data.userRecord);
       }
       await fetchBoard();
-      if (data.message) {
-        showToast(data.message);
+      showToast(data.message || `Password set successfully! Welcome, ${selectedOfficial.name}.`);
+    } catch (err: unknown) {
+      setAuthError(err instanceof Error ? err.message : "Failed to set password.");
+    } finally {
+      setAuthBusy(false);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    setAuthError("");
+    const selectedOfficial =
+      OFFICIAL_TEAM_ROSTER.find((m) => m.id === selectedExistingMemberId) ||
+      OFFICIAL_TEAM_ROSTER[0];
+
+    setAuthBusy(true);
+    try {
+      const data = await apiFetch("/api/auth/reset-password", {
+        method: "POST",
+        body: JSON.stringify({
+          userId: selectedOfficial.id,
+          email: selectedOfficial.email,
+        }),
+      });
+
+      setResetSuccessInfo({
+        tempPassword: data.tempPassword,
+        email: data.email,
+        name: data.name,
+      });
+
+      if (data.tempPassword) {
+        setAuthPassword(data.tempPassword);
       }
+
+      showToast(`Temporary password generated for ${data.name}!`);
+    } catch (err: unknown) {
+      setAuthError(err instanceof Error ? err.message : "Failed to reset password.");
+    } finally {
+      setAuthBusy(false);
+    }
+  };
+
+  const handleNewUserRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthError("");
+
+    if (!authName.trim()) {
+      setAuthError("Full Name is required.");
+      return;
+    }
+    if (!authEmail.trim()) {
+      setAuthError("Email is required.");
+      return;
+    }
+    if (!authPhone.trim()) {
+      setAuthError("Phone Number is required.");
+      return;
+    }
+    if (!authPassword || authPassword.length < 4) {
+      setAuthError("Password must be at least 4 characters.");
+      return;
+    }
+    if (authPassword !== authRetypePassword) {
+      setAuthError("Passwords do not match. Please retype carefully.");
+      return;
+    }
+
+    setAuthBusy(true);
+    try {
+      const data = await apiFetch("/api/auth/register", {
+        method: "POST",
+        body: JSON.stringify({
+          action: "new_user",
+          name: authName.trim(),
+          email: authEmail.trim(),
+          phone: authPhone.trim(),
+          teamRole: authTeamRole.trim() || (authAccountType === "ADMIN" ? "Admin" : "Team Member"),
+          accountType: authAccountType,
+          password: authPassword,
+        }),
+      });
+
+      if (data.token) {
+        setSessionToken(data.token);
+        window.localStorage.setItem("cap_session_token", data.token);
+      }
+      if (data.user) {
+        setCurrentUser(data.user);
+        window.localStorage.setItem("cap_current_user", JSON.stringify(data.user));
+      }
+      window.localStorage.setItem("cap_saved_email", authEmail.trim());
+      if (data.passwordHash) {
+        saveLocalPasswordHash(authEmail.trim(), data.passwordHash);
+      }
+      if (data.userRecord) {
+        saveLocalUserRecord(data.userRecord);
+      }
+      await fetchBoard();
+      showToast(data.message || `Account created! Signed in as ${authName}.`);
     } catch (err: unknown) {
       setAuthError(err instanceof Error ? err.message : "Registration failed.");
     } finally {
@@ -664,225 +834,330 @@ export default function TaskBoardApp() {
   }
 
   if (!currentUser) {
+    const selectedOfficial =
+      OFFICIAL_TEAM_ROSTER.find((m) => m.id === selectedExistingMemberId) ||
+      OFFICIAL_TEAM_ROSTER[0];
+
+    const matchedUser = users.find(
+      (u) =>
+        u.id === selectedOfficial.id ||
+        u.memberId === selectedOfficial.id ||
+        u.email.toLowerCase() === selectedOfficial.email.toLowerCase() ||
+        u.name.toLowerCase() === selectedOfficial.name.toLowerCase()
+    );
+
+    const isPasswordSet = Boolean(matchedUser ? matchedUser.passwordSet : false);
+
     return (
-      <div className="min-h-screen bg-[#f4f5f9] text-[#1e2330] flex flex-col justify-center py-12 px-4">
-        <div className="w-full max-w-md mx-auto space-y-6">
+      <div className="min-h-screen bg-[#f4f5f9] text-[#1e2330] flex flex-col justify-center py-10 px-4">
+        <div className="w-full max-w-lg mx-auto space-y-6">
           <div className="flex items-center gap-3.5">
             <img
               src="/cap-logo-black.png"
               alt="CAP"
-              className="h-9 w-auto object-contain"
+              className="h-10 w-auto object-contain"
             />
             <div>
               <h1 className="text-xl font-bold tracking-tight text-[#1f2d5a]">
                 Task Board
               </h1>
               <p className="text-[13px] text-[#3b4254]">
-                Sign in with your account or create a new one.
+                Choose an option below to enter the workspace.
               </p>
             </div>
           </div>
 
           <div className="bg-white rounded-xl border border-[#dce1ec] border-t-4 border-t-[#e8792b] shadow-sm p-6 space-y-5">
-            <div className="flex border-b border-[#dce1ec] text-[13.5px] font-semibold">
+            {/* 2 Clear Options: 1- Existing user, 2- New user */}
+            <div className="grid grid-cols-2 gap-2 p-1 bg-[#f4f5f9] rounded-lg border border-[#e2e6f0]">
               <button
                 type="button"
                 onClick={() => {
-                  setAuthMode("login");
+                  setAuthOption("existing");
                   setAuthError("");
+                  setResetSuccessInfo(null);
                 }}
-                className={`pb-2.5 mr-6 border-b-2 transition-colors cursor-pointer ${
-                  authMode === "login"
-                    ? "border-[#e8792b] text-[#1f2d5a]"
-                    : "border-transparent text-[#525b70] hover:text-[#1f2d5a]"
+                className={`py-2 px-3 rounded-md text-[13.5px] font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                  authOption === "existing"
+                    ? "bg-white text-[#1f2d5a] shadow-xs border border-[#ccd1de]"
+                    : "text-[#525b70] hover:text-[#1f2d5a]"
                 }`}
               >
-                Sign in
+                <span>1.</span>
+                <span>Existing User</span>
               </button>
               <button
                 type="button"
                 onClick={() => {
-                  setAuthMode("register");
+                  setAuthOption("new");
                   setAuthError("");
+                  setResetSuccessInfo(null);
                 }}
-                className={`pb-2.5 border-b-2 transition-colors cursor-pointer ${
-                  authMode === "register"
-                    ? "border-[#e8792b] text-[#1f2d5a]"
-                    : "border-transparent text-[#525b70] hover:text-[#1f2d5a]"
+                className={`py-2 px-3 rounded-md text-[13.5px] font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                  authOption === "new"
+                    ? "bg-white text-[#1f2d5a] shadow-xs border border-[#ccd1de]"
+                    : "text-[#525b70] hover:text-[#1f2d5a]"
                 }`}
               >
-                Create account / Set password
+                <span>2.</span>
+                <span>New User</span>
               </button>
             </div>
 
             {authError && (
-              <div className="p-3 rounded-lg bg-[#ffe1e5] border border-[#f5c2c7] text-[#9c0006] text-[13px] font-medium">
-                {authError}
+              <div className="p-3 rounded-lg bg-[#ffe1e5] border border-[#f5c2c7] text-[#9c0006] text-[13px] font-medium flex items-center gap-2">
+                <span>⚠️</span>
+                <span>{authError}</span>
               </div>
             )}
 
-            {authMode === "login" ? (
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  handleLogin();
-                }}
-                className="space-y-4"
-              >
-                <div>
-                  <label className="block text-[13px] font-semibold text-[#1f2d5a] mb-1">
-                    Email
-                  </label>
-                  <input
-                    type="email"
-                    name="email"
-                    autoComplete="username"
-                    required
-                    placeholder="name@cap.com"
-                    value={authEmail}
-                    onChange={(e) => setAuthEmail(e.target.value)}
-                    className="w-full rounded-lg border border-[#ccd1de] px-3 py-2 text-[14px] text-[#1e2330] focus:outline-none focus:border-[#1f2d5a]"
-                  />
+            {resetSuccessInfo && (
+              <div className="p-4 rounded-xl bg-[#ecfdf5] border border-[#a7f3d0] text-[#065f46] space-y-2">
+                <div className="flex items-center gap-2 font-bold text-[13.5px]">
+                  <span>📬</span>
+                  <span>Temporary Password Issued & Sent!</span>
                 </div>
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="block text-[13px] font-semibold text-[#1f2d5a]">
-                      Password
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setAuthMode("register");
-                        setAuthError("");
-                      }}
-                      className="text-[12px] text-[#0b69a3] hover:underline cursor-pointer font-medium"
-                    >
-                      Set or reset password?
-                    </button>
-                  </div>
-                  <input
-                    type="password"
-                    name="password"
-                    autoComplete="current-password"
-                    required
-                    placeholder="••••••••"
-                    value={authPassword}
-                    onChange={(e) => setAuthPassword(e.target.value)}
-                    className="w-full rounded-lg border border-[#ccd1de] px-3 py-2 text-[14px] text-[#1e2330] focus:outline-none focus:border-[#1f2d5a]"
-                  />
+                <p className="text-[12.5px] text-[#047857]">
+                  A temporary password was generated for <strong>{resetSuccessInfo.name}</strong> and sent to <strong>{resetSuccessInfo.email}</strong>.
+                </p>
+                <div className="flex items-center gap-2 bg-white px-3 py-2 rounded-lg border border-[#6ee7b7]">
+                  <span className="text-[12px] text-[#065f46] font-medium">Temporary Password:</span>
+                  <code className="font-mono-code font-bold text-[14px] text-[#1f2d5a] bg-[#f0f4ff] px-2 py-0.5 rounded">
+                    {resetSuccessInfo.tempPassword}
+                  </code>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText(resetSuccessInfo.tempPassword);
+                      showToast("Password copied to clipboard!");
+                    }}
+                    className="ml-auto text-[11.5px] font-bold text-[#0b69a3] hover:underline cursor-pointer"
+                  >
+                    Copy
+                  </button>
                 </div>
-
+                <p className="text-[11.5px] text-[#065f46]">
+                  You can sign in now with this password. Once signed in, you can update it anytime using the <strong>UPDATE PASSWORD</strong> button beside &apos;Sign out&apos; on the dashboard.
+                </p>
                 <button
-                  type="submit"
+                  type="button"
+                  onClick={() => {
+                    handleLogin(resetSuccessInfo.email, resetSuccessInfo.tempPassword);
+                  }}
                   disabled={authBusy}
-                  className="w-full py-2.5 rounded-lg bg-[#1f2d5a] hover:bg-[#2a3a6e] text-white font-semibold text-[14px] transition-colors cursor-pointer disabled:opacity-50"
+                  className="w-full mt-1 py-2 rounded-lg bg-[#059669] hover:bg-[#047857] text-white text-[13px] font-bold cursor-pointer transition-colors shadow-xs"
                 >
-                  {authBusy ? "Signing in..." : "Sign in"}
+                  {authBusy ? "Signing in..." : "Auto-Fill & Sign In Now"}
                 </button>
-              </form>
-            ) : (
-              <form onSubmit={handleRegister} className="space-y-3.5">
+              </div>
+            )}
+
+            {authOption === "existing" ? (
+              <div className="space-y-4">
                 <div>
                   <label className="block text-[13px] font-semibold text-[#1f2d5a] mb-1">
-                    Select team member (from Excel roster)
+                    Select your identity from team roster
                   </label>
                   <select
-                    value={selectedTeamMemberId}
+                    value={selectedExistingMemberId}
                     onChange={(e) => {
-                      const val = e.target.value;
-                      setSelectedTeamMemberId(val);
-                      if (val && val !== "custom") {
-                        const found = team.find((m) => m.id === val);
-                        if (found) {
-                          setAuthName(found.name);
-                          setAuthTeamRole(found.role);
-
-                          const defaults = TEAM_ROSTER_DEFAULTS[found.id];
-                          const matchedUser = users.find(
-                            (u) =>
-                              u.memberId === found.id ||
-                              u.name.toLowerCase() === found.name.toLowerCase()
-                          );
-
-                          if (defaults) {
-                            setAuthEmail(defaults.email);
-                            setAuthAccountType(defaults.role);
-                            if (defaults.title) setAuthTeamRole(defaults.title);
-                          } else if (matchedUser) {
-                            setAuthEmail(matchedUser.email);
-                            setAuthAccountType(matchedUser.role);
-                            if (matchedUser.teamRole) setAuthTeamRole(matchedUser.teamRole);
-                          } else {
-                            const first = found.name.split(" ")[0].toLowerCase();
-                            setAuthEmail(`${first}@cap.com`);
-                            const isLikelyAdmin =
-                              /admin|director|ceo|md|chief|lead/i.test(found.role);
-                            setAuthAccountType(isLikelyAdmin ? "ADMIN" : "MEMBER");
-                          }
-                        }
-                      }
+                      setSelectedExistingMemberId(e.target.value);
+                      setAuthError("");
+                      setResetSuccessInfo(null);
+                      setAuthPassword("");
+                      setAuthRetypePassword("");
                     }}
-                    className="w-full rounded-lg border border-[#ccd1de] px-3 py-2 text-[13.5px] text-[#1e2330] focus:outline-none focus:border-[#1f2d5a] bg-white"
+                    className="w-full rounded-lg border border-[#ccd1de] px-3 py-2 text-[13.5px] font-medium text-[#1e2330] focus:outline-none focus:border-[#1f2d5a] bg-white cursor-pointer"
                   >
-                    <option value="">— Choose name from roster (or enter below) —</option>
-                    {team.map((m) => (
+                    {OFFICIAL_TEAM_ROSTER.map((m) => (
                       <option key={m.id} value={m.id}>
-                        {m.name} — {m.role}
+                        {m.name} — {m.title} ({m.role === "ADMIN" ? "Admin" : "Member"})
                       </option>
                     ))}
-                    <option value="custom">+ New Member / Not listed above</option>
                   </select>
                 </div>
 
+                {/* Member Info Card */}
+                <div className="p-3.5 rounded-lg bg-[#f8f9fc] border border-[#dce1ec] space-y-1.5 text-[12.5px]">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-[#1f2d5a] text-[13.5px]">
+                      {selectedOfficial.name}
+                    </span>
+                    <span
+                      className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${
+                        selectedOfficial.role === "ADMIN"
+                          ? "bg-[#1f2d5a] text-white"
+                          : "bg-[#e8ecf6] text-[#1f2d5a]"
+                      }`}
+                    >
+                      {selectedOfficial.role === "ADMIN" ? "Admin" : "Member"}
+                    </span>
+                  </div>
+                  <div className="text-[#525b70] flex items-center gap-1.5">
+                    <span className="font-medium text-[#1f2d5a]">Title:</span> {selectedOfficial.title}
+                  </div>
+                  <div className="text-[#525b70] flex items-center gap-1.5">
+                    <span className="font-medium text-[#1f2d5a]">Official Email:</span>{" "}
+                    <code className="text-[#0b69a3] font-mono-code">{selectedOfficial.email}</code>
+                  </div>
+                  <div className="text-[#525b70] flex items-center gap-1.5">
+                    <span className="font-medium text-[#1f2d5a]">Phone Number:</span>{" "}
+                    <span className="font-mono-code font-semibold text-[#1e2330]">{selectedOfficial.phone}</span>
+                  </div>
+                </div>
+
+                {!isPasswordSet ? (
+                  /* Case A: First time login - prompt user to set password */
+                  <form onSubmit={handleExistingMemberSetPassword} className="space-y-3.5 pt-1">
+                    <div className="p-3 rounded-lg bg-[#eff6ff] border border-[#bfdbfe] text-[12px] text-[#1e3a8a] space-y-1">
+                      <div className="font-bold flex items-center gap-1.5 text-[12.5px]">
+                        <span>🔑</span>
+                        <span>First-Time Sign In: Set Your Password</span>
+                      </div>
+                      <p>
+                        Welcome, <strong>{selectedOfficial.name}</strong>! As an existing team member, please set your password below to activate your account.
+                      </p>
+                    </div>
+
+                    <div>
+                      <label className="block text-[13px] font-semibold text-[#1f2d5a] mb-1">
+                        New Password
+                      </label>
+                      <input
+                        type="password"
+                        required
+                        autoComplete="new-password"
+                        placeholder="Minimum 4 characters"
+                        value={authPassword}
+                        onChange={(e) => setAuthPassword(e.target.value)}
+                        className="w-full rounded-lg border border-[#ccd1de] px-3 py-2 text-[14px] text-[#1e2330] focus:outline-none focus:border-[#1f2d5a]"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[13px] font-semibold text-[#1f2d5a] mb-1">
+                        Retype Password
+                      </label>
+                      <input
+                        type="password"
+                        required
+                        autoComplete="new-password"
+                        placeholder="Confirm password"
+                        value={authRetypePassword}
+                        onChange={(e) => setAuthRetypePassword(e.target.value)}
+                        className="w-full rounded-lg border border-[#ccd1de] px-3 py-2 text-[14px] text-[#1e2330] focus:outline-none focus:border-[#1f2d5a]"
+                      />
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={authBusy}
+                      className="w-full py-2.5 rounded-lg bg-[#1f2d5a] hover:bg-[#2a3a6e] text-white font-semibold text-[14px] transition-colors cursor-pointer disabled:opacity-50"
+                    >
+                      {authBusy ? "Activating account..." : "Set Password & Sign In"}
+                    </button>
+                  </form>
+                ) : (
+                  /* Case B: Password already set - normal sign in with forgot password option */
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      handleLogin(selectedOfficial.email, authPassword);
+                    }}
+                    className="space-y-3.5 pt-1"
+                  >
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="block text-[13px] font-semibold text-[#1f2d5a]">
+                          Password
+                        </label>
+                        <button
+                          type="button"
+                          onClick={handleForgotPassword}
+                          disabled={authBusy}
+                          className="text-[12px] text-[#0b69a3] hover:underline cursor-pointer font-semibold"
+                        >
+                          Forgot password?
+                        </button>
+                      </div>
+                      <input
+                        type="password"
+                        required
+                        autoComplete="current-password"
+                        placeholder="••••••••"
+                        value={authPassword}
+                        onChange={(e) => setAuthPassword(e.target.value)}
+                        className="w-full rounded-lg border border-[#ccd1de] px-3 py-2 text-[14px] text-[#1e2330] focus:outline-none focus:border-[#1f2d5a]"
+                      />
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={authBusy}
+                      className="w-full py-2.5 rounded-lg bg-[#1f2d5a] hover:bg-[#2a3a6e] text-white font-semibold text-[14px] transition-colors cursor-pointer disabled:opacity-50"
+                    >
+                      {authBusy ? "Signing in..." : "Sign in"}
+                    </button>
+                  </form>
+                )}
+              </div>
+            ) : (
+              /* Option 2: New User Registration */
+              <form onSubmit={handleNewUserRegister} className="space-y-3.5">
+                <div className="p-3 rounded-lg bg-[#f0fdf4] border border-[#bbf7d0] text-[12px] text-[#166534] space-y-0.5">
+                  <div className="font-bold flex items-center gap-1.5 text-[12.5px]">
+                    <span>✨</span>
+                    <span>New User Registration</span>
+                  </div>
+                  <p>Register a new member with full credentials to access the CAP Task Board.</p>
+                </div>
+
                 <div>
                   <label className="block text-[13px] font-semibold text-[#1f2d5a] mb-1">
-                    Full name
+                    Full Name <span className="text-[#e8792b]">*</span>
                   </label>
                   <input
                     type="text"
-                    name="name"
-                    autoComplete="name"
                     required
-                    placeholder="Your name"
+                    placeholder="e.g. Jane Doe"
                     value={authName}
                     onChange={(e) => setAuthName(e.target.value)}
                     className="w-full rounded-lg border border-[#ccd1de] px-3 py-2 text-[14px] text-[#1e2330] focus:outline-none focus:border-[#1f2d5a]"
                   />
                 </div>
+
                 <div>
                   <label className="block text-[13px] font-semibold text-[#1f2d5a] mb-1">
-                    Email
+                    Email Address <span className="text-[#e8792b]">*</span>
                   </label>
                   <input
                     type="email"
-                    name="email"
-                    autoComplete="email"
                     required
-                    placeholder="you@cap.com"
+                    placeholder="e.g. jane@cap.direct"
                     value={authEmail}
                     onChange={(e) => setAuthEmail(e.target.value)}
                     className="w-full rounded-lg border border-[#ccd1de] px-3 py-2 text-[14px] text-[#1e2330] focus:outline-none focus:border-[#1f2d5a]"
                   />
                 </div>
+
+                <div>
+                  <label className="block text-[13px] font-semibold text-[#1f2d5a] mb-1">
+                    Phone Number <span className="text-[#e8792b]">*</span>
+                  </label>
+                  <input
+                    type="tel"
+                    required
+                    placeholder="e.g. +8801700000000"
+                    value={authPhone}
+                    onChange={(e) => setAuthPhone(e.target.value)}
+                    className="w-full rounded-lg border border-[#ccd1de] px-3 py-2 text-[14px] text-[#1e2330] focus:outline-none focus:border-[#1f2d5a]"
+                  />
+                </div>
+
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-[13px] font-semibold text-[#1f2d5a] mb-1">
-                      Password
-                    </label>
-                    <input
-                      type="password"
-                      name="password"
-                      autoComplete="new-password"
-                      required
-                      placeholder="Min 4 chars"
-                      value={authPassword}
-                      onChange={(e) => setAuthPassword(e.target.value)}
-                      className="w-full rounded-lg border border-[#ccd1de] px-3 py-2 text-[14px] text-[#1e2330] focus:outline-none focus:border-[#1f2d5a]"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[13px] font-semibold text-[#1f2d5a] mb-1">
-                      Title
+                      Title / Designation
                     </label>
                     <input
                       type="text"
@@ -892,48 +1167,58 @@ export default function TaskBoardApp() {
                       className="w-full rounded-lg border border-[#ccd1de] px-3 py-2 text-[14px] text-[#1e2330] focus:outline-none focus:border-[#1f2d5a]"
                     />
                   </div>
-                </div>
-
-                <div>
-                  <label className="block text-[13px] font-semibold text-[#1f2d5a] mb-1">
-                    Account type
-                  </label>
-                  <select
-                    value={authAccountType}
-                    onChange={(e) =>
-                      setAuthAccountType(e.target.value as "MEMBER" | "ADMIN")
-                    }
-                    className="w-full rounded-lg border border-[#ccd1de] px-3 py-2 text-[13.5px] text-[#1e2330] focus:outline-none focus:border-[#1f2d5a] bg-white"
-                  >
-                    <option value="MEMBER">Member (view only)</option>
-                    <option value="ADMIN">Admin (requires approval from an existing Admin)</option>
-                  </select>
-                </div>
-
-                {selectedTeamMemberId && selectedTeamMemberId !== "custom" && (
-                  <div className="p-3 rounded-lg bg-[#f0f4ff] border border-[#d0dcf5] text-[12.5px] text-[#1f2d5a] space-y-1">
-                    <div className="font-semibold flex items-center gap-1.5">
-                      <span>🔑</span>
-                      <span>
-                        Setting password for: <strong>{authName}</strong> ({authAccountType === "ADMIN" ? "Admin" : "Member"})
-                      </span>
-                    </div>
-                    <p className="text-[11.5px] text-[#486581]">
-                      Once saved, your password will be stored securely so you can sign in anytime with these credentials.
-                    </p>
+                  <div>
+                    <label className="block text-[13px] font-semibold text-[#1f2d5a] mb-1">
+                      Account Type
+                    </label>
+                    <select
+                      value={authAccountType}
+                      onChange={(e) =>
+                        setAuthAccountType(e.target.value as "MEMBER" | "ADMIN")
+                      }
+                      className="w-full rounded-lg border border-[#ccd1de] px-3 py-2 text-[13px] text-[#1e2330] focus:outline-none focus:border-[#1f2d5a] bg-white"
+                    >
+                      <option value="MEMBER">Member (view only)</option>
+                      <option value="ADMIN">Admin (requires approval)</option>
+                    </select>
                   </div>
-                )}
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[13px] font-semibold text-[#1f2d5a] mb-1">
+                      Password <span className="text-[#e8792b]">*</span>
+                    </label>
+                    <input
+                      type="password"
+                      required
+                      placeholder="Min 4 chars"
+                      value={authPassword}
+                      onChange={(e) => setAuthPassword(e.target.value)}
+                      className="w-full rounded-lg border border-[#ccd1de] px-3 py-2 text-[14px] text-[#1e2330] focus:outline-none focus:border-[#1f2d5a]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[13px] font-semibold text-[#1f2d5a] mb-1">
+                      Retype Password <span className="text-[#e8792b]">*</span>
+                    </label>
+                    <input
+                      type="password"
+                      required
+                      placeholder="Confirm password"
+                      value={authRetypePassword}
+                      onChange={(e) => setAuthRetypePassword(e.target.value)}
+                      className="w-full rounded-lg border border-[#ccd1de] px-3 py-2 text-[14px] text-[#1e2330] focus:outline-none focus:border-[#1f2d5a]"
+                    />
+                  </div>
+                </div>
 
                 <button
                   type="submit"
                   disabled={authBusy}
                   className="w-full py-2.5 rounded-lg bg-[#1f2d5a] hover:bg-[#2a3a6e] text-white font-semibold text-[14px] transition-colors cursor-pointer disabled:opacity-50"
                 >
-                  {authBusy
-                    ? "Saving credentials..."
-                    : selectedTeamMemberId && selectedTeamMemberId !== "custom"
-                    ? "Set Password & Sign In"
-                    : "Create Account & Sign In"}
+                  {authBusy ? "Creating account..." : "Create Account & Sign In"}
                 </button>
               </form>
             )}
@@ -1031,6 +1316,14 @@ export default function TaskBoardApp() {
               >
                 {isAdmin ? "Admin" : "Member"}
               </span>
+              <button
+                type="button"
+                onClick={() => setShowUpdatePasswordModal(true)}
+                className="px-2.5 py-1 rounded-md border border-[#ccd1de] bg-white hover:border-[#1f2d5a] hover:bg-[#f0f4ff] text-[#1f2d5a] text-[11.5px] font-bold uppercase tracking-wider cursor-pointer transition-colors shadow-2xs"
+                title="Update your account password"
+              >
+                Update Password
+              </button>
               <button
                 type="button"
                 onClick={handleLogout}
@@ -2237,6 +2530,18 @@ export default function TaskBoardApp() {
         selectedMemberName={selectedMemberName}
         onExportSuccess={(msg) => showToast(msg)}
       />
+
+      {/* Update Password Modal (accessible on dashboard beside Sign out) */}
+      {currentUser && (
+        <UpdatePasswordModal
+          isOpen={showUpdatePasswordModal}
+          onClose={() => setShowUpdatePasswordModal(false)}
+          currentUser={currentUser}
+          apiFetch={apiFetch}
+          onSuccess={(msg) => showToast(msg)}
+          saveLocalPasswordHash={saveLocalPasswordHash}
+        />
+      )}
     </div>
   );
 }

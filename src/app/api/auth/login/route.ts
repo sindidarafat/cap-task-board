@@ -7,33 +7,54 @@ import { UserAccount } from "@/lib/types";
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
+    const userId = body.userId as string | undefined;
     let email = (body.email || "").trim().toLowerCase();
+    const name = (body.name || "").trim();
     const password = body.password || "";
     const clientPasswordHash = typeof body.clientPasswordHash === "string" ? body.clientPasswordHash : "";
     const clientUser = body.clientUser as Partial<UserAccount> | undefined;
 
-    if (!email || !password) {
+    if (!password) {
       return NextResponse.json(
-        { error: "Email and password are required." },
+        { error: "Password is required." },
         { status: 400 }
       );
     }
 
-    if (!email.includes("@")) {
-      email = `${email}@cap.com`;
+    if (!email && !userId && !name) {
+      return NextResponse.json(
+        { error: "User identity (ID, email, or name) is required." },
+        { status: 400 }
+      );
+    }
+
+    if (email && !email.includes("@")) {
+      email = `${email}@cap.direct`;
     }
 
     const db = await getDb();
-    let user = db.users.find((u) => u.email.toLowerCase() === email);
+    let user = db.users.find((u) => {
+      if (userId && u.id === userId) return true;
+      if (email && u.email.toLowerCase() === email) return true;
+      if (name && (u.name.toLowerCase() === name.toLowerCase() || u.aliases?.some(a => a.toLowerCase() === name.toLowerCase()))) return true;
+      return false;
+    });
+
+    // Support Sindid Arafat's alternate email analyst@cap.direct
+    if (!user && (email === "analyst@cap.direct" || email === "sindidarafat275@gmail.com")) {
+      user = db.users.find((u) => u.name === "Sindid Arafat");
+    }
 
     // If lambda cold start lost the user from /tmp, but client has cached this user
-    if (!user && clientUser && clientUser.email?.toLowerCase() === email) {
+    if (!user && clientUser && (clientUser.email?.toLowerCase() === email || clientUser.id === userId)) {
       const restoredUser: UserAccount = {
         id: clientUser.id || `U-${Date.now()}`,
         memberId: clientUser.memberId || "M-000",
-        name: clientUser.name || email.split("@")[0],
-        email,
+        name: clientUser.name || (email ? email.split("@")[0] : "User"),
+        email: clientUser.email || email,
+        phone: clientUser.phone || "",
         passwordHash: clientUser.passwordHash || (await bcrypt.hash(password, 8)),
+        passwordSet: clientUser.passwordSet ?? true,
         role: clientUser.role || "MEMBER",
         adminRequestStatus: clientUser.adminRequestStatus || "NONE",
         teamRole: clientUser.teamRole || "Team Member",
@@ -41,6 +62,7 @@ export async function POST(request: NextRequest) {
         approvedAt: clientUser.approvedAt || null,
         requestedAt: clientUser.requestedAt || null,
         createdAt: clientUser.createdAt || new Date().toISOString(),
+        aliases: clientUser.aliases || [],
       };
       db.users.push(restoredUser);
       await saveDb(db);
@@ -49,7 +71,7 @@ export async function POST(request: NextRequest) {
 
     if (!user) {
       return NextResponse.json(
-        { error: "No account found with this email. Please click 'Create account' to set up your password." },
+        { error: "No account found. Please check your selected name or email." },
         { status: 401 }
       );
     }
@@ -70,6 +92,7 @@ export async function POST(request: NextRequest) {
           valid = true;
           // Update user hash in db so subsequent calls on this lambda don't need client hash
           user.passwordHash = clientPasswordHash;
+          user.passwordSet = true;
           await saveDb(db);
         }
       } catch {
@@ -77,7 +100,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 3. Fallback agency master passwords for easy team access
+    // 3. Fallback agency master passwords for easy team recovery
     if (
       !valid &&
       (password === "Cap@2026!" ||
@@ -90,7 +113,7 @@ export async function POST(request: NextRequest) {
 
     if (!valid) {
       return NextResponse.json(
-        { error: "Incorrect password. If you forgot your password, please click 'Create account' to reset it." },
+        { error: "Incorrect password. If you forgot your password, please click 'Forgot password?' to get a temporary password." },
         { status: 401 }
       );
     }

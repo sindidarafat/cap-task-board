@@ -135,10 +135,38 @@ export async function getDb(): Promise<DatabaseSchema> {
           db.users[idx].role = "ADMIN";
           db.users[idx].adminRequestStatus = "APPROVED";
         }
+        if (initUser.phone && !db.users[idx].phone) {
+          db.users[idx].phone = initUser.phone;
+        }
+        if (initUser.aliases) {
+          db.users[idx].aliases = initUser.aliases;
+        }
       }
     }
   } else {
     db.users = initial.users;
+  }
+
+  // Guarantee team roster has emails, phones, and aliases
+  if (Array.isArray(db.team)) {
+    for (const initMember of initial.team) {
+      const tIdx = db.team.findIndex((m) => m.id === initMember.id);
+      if (tIdx === -1) {
+        db.team.push(initMember);
+      } else {
+        if (initMember.phone && !db.team[tIdx].phone) {
+          db.team[tIdx].phone = initMember.phone;
+        }
+        if (initMember.email && !db.team[tIdx].email) {
+          db.team[tIdx].email = initMember.email;
+        }
+        if (initMember.aliases) {
+          db.team[tIdx].aliases = initMember.aliases;
+        }
+      }
+    }
+  } else {
+    db.team = initial.team;
   }
 
   globalThis.__capDbCache = db;

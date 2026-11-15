@@ -740,7 +740,12 @@
       "role": "Creative Director",
       "team": "Creative",
       "dailyCapacity": 6,
-      "notes": "Confirms owner, reviewer and estimated hours for every creative task"
+      "email": "creative@cap.direct",
+      "phone": "+8801840783226",
+      "notes": "Confirms owner, reviewer and estimated hours for every creative task",
+      "aliases": [
+        "Amit Pramanik"
+      ]
     },
     {
       "id": "M-002",
@@ -748,47 +753,82 @@
       "role": "Copy Supervisor",
       "team": "Creative",
       "dailyCapacity": 6,
-      "notes": ""
+      "email": "writer@cap.direct",
+      "phone": "+8801787623050",
+      "notes": "Lead copywriter and content strategist",
+      "aliases": [
+        "Ragib Shahriar"
+      ]
     },
     {
       "id": "M-003",
-      "name": "Rakib Islam",
+      "name": "Md. Rakib-ul-Islam",
       "role": "Sr. Visualizer",
       "team": "Creative",
       "dailyCapacity": 6,
-      "notes": ""
+      "email": "design@cap.direct",
+      "phone": "+8801955688057",
+      "notes": "Senior design and visual deliverables lead",
+      "aliases": [
+        "Rakib Islam",
+        "Md. Rakib-ul-Islam"
+      ]
     },
     {
       "id": "M-004",
-      "name": "Rajib Akash",
+      "name": "Rajib Hossen",
       "role": "Sr. Visualizer",
       "team": "Creative",
       "dailyCapacity": 6,
-      "notes": ""
+      "email": "rajibakash@gmail.com",
+      "phone": "+8801681795542",
+      "notes": "Senior graphic visualizer",
+      "aliases": [
+        "Rajib Akash",
+        "Rajib Hossen"
+      ]
     },
     {
       "id": "M-005",
-      "name": "Laxmi",
+      "name": "Nusrat Laxme",
       "role": "Jr. Visualizer",
       "team": "Creative",
       "dailyCapacity": 6,
-      "notes": ""
+      "email": "nusratlaxme123@gmail.com",
+      "phone": "+8801628586049",
+      "notes": "Visual design support and asset creation",
+      "aliases": [
+        "Laxmi",
+        "Nusrat Laxme"
+      ]
     },
     {
       "id": "M-006",
-      "name": "Hasin Bijoy",
+      "name": "Hasin Ishraq Bijoy",
       "role": "Video Editor",
       "team": "Creative",
       "dailyCapacity": 6,
-      "notes": ""
+      "email": "visualizer@cap.direct",
+      "phone": "+8801786039319",
+      "notes": "Video motion, reels, and video editing",
+      "aliases": [
+        "Hasin Bijoy",
+        "Hasin Ishraq Bijoy"
+      ]
     },
     {
       "id": "M-007",
-      "name": "Muntasir Mannan",
+      "name": "Md. Montasir Mannan",
       "role": "Key Account Manager",
       "team": "Servicing",
       "dailyCapacity": 6,
-      "notes": "Owner of the board — logs tasks and runs morning/midday/EOD checks"
+      "email": "operations@cap.direct",
+      "phone": "+8801712888824",
+      "notes": "Owner of the board — logs tasks and runs morning/midday/EOD checks",
+      "aliases": [
+        "Muntasir Mannan",
+        "Md. Montasir Mannan"
+      ]
     },
     {
       "id": "M-008",
@@ -796,23 +836,41 @@
       "role": "Client Servicing Executive",
       "team": "Servicing",
       "dailyCapacity": 6,
-      "notes": "Servicing touchpoint — records client approvals, feedback, blockers"
+      "email": "client.service@cap.direct",
+      "phone": "+8801643116621",
+      "notes": "Servicing touchpoint — records client approvals, feedback, blockers",
+      "aliases": [
+        "Tahmina Taj"
+      ]
     },
     {
       "id": "M-009",
-      "name": "Rajat Tanmay",
+      "name": "Tanmay paul",
       "role": "MD and Servicing Lead",
       "team": "Servicing",
       "dailyCapacity": 6,
-      "notes": "Reviews Scorecard every Thursday"
+      "email": "md@cap.direct",
+      "phone": "+8801681436919",
+      "notes": "Reviews Scorecard every Thursday",
+      "aliases": [
+        "Rajat Tanmay",
+        "Tanmay paul"
+      ]
     },
     {
       "id": "M-010",
-      "name": "Syeda Neelima Dola",
+      "name": "Syeda Nilima Dola",
       "role": "CEO",
       "team": "C-Suite",
       "dailyCapacity": 6,
-      "notes": "Reviews Scorecard every Thursday and settles long-standing blockers"
+      "email": "ceo@cap.direct",
+      "phone": "+8801757629895",
+      "notes": "Reviews Scorecard every Thursday and settles long-standing blockers",
+      "aliases": [
+        "Syeda Neelima Dola",
+        "Syeda Nilima Dola",
+        "Neelima Dola"
+      ]
     },
     {
       "id": "M-011",
@@ -820,7 +878,12 @@
       "role": "Chief of Strategy",
       "team": "C-Suite",
       "dailyCapacity": 6,
-      "notes": ""
+      "email": "strategy@cap.direct",
+      "phone": "+4915755531545",
+      "notes": "Strategic planning and high-level campaign planning",
+      "aliases": [
+        "Manjurul Mahmud"
+      ]
     },
     {
       "id": "M-012",
@@ -828,7 +891,13 @@
       "role": "Chief of Finance",
       "team": "C-Suite",
       "dailyCapacity": 6,
-      "notes": ""
+      "email": "data@cap.direct",
+      "phone": "+353851522813",
+      "notes": "Financial planning and executive oversight",
+      "aliases": [
+        "Meem Arafat Manab",
+        "Meem Arafat"
+      ]
     },
     {
       "id": "M-013",
@@ -836,242 +905,359 @@
       "role": "Data Analyst",
       "team": "Strategy and Data",
       "dailyCapacity": 6,
-      "notes": ""
+      "email": "sindidarafat275@gmail.com",
+      "phone": "+8801735807816",
+      "notes": "Board intelligence, data analytics, and platform governance",
+      "aliases": [
+        "Sindid Arafat"
+      ]
     },
     {
       "id": "M-014",
-      "name": "Rashed",
+      "name": "Rashedul Islam",
       "role": "Admin",
       "team": "Admin",
       "dailyCapacity": 6,
-      "notes": ""
+      "email": "accounts@cap.direct",
+      "phone": "+8801805033153",
+      "notes": "Administration, finance and accounts",
+      "aliases": [
+        "Rashed",
+        "Rashedul Islam"
+      ]
+    },
+    {
+      "id": "M-015",
+      "name": "Hasib Mohammad Ashiq",
+      "role": "Admin",
+      "team": "Admin",
+      "dailyCapacity": 6,
+      "email": "office@cap.direct",
+      "phone": "+8801672824324",
+      "notes": "Office and operations administration",
+      "aliases": [
+        "Hasib Mohammad Ashiq",
+        "Hasib Ashiq"
+      ]
     }
   ],
   "estimateBuffer": 0.2,
   "users": [
     {
-      "id": "U-013",
-      "memberId": "M-013",
-      "name": "Sindid Arafat",
-      "email": "sindid@cap.com",
-      "passwordHash": "$2b$08$j2VRPPBA1FJLtjCqOB6sNebAypGAFUAOIkQaFFeEqbWPlGNFyvfp2",
+      "id": "U-001",
+      "memberId": "M-007",
+      "name": "Md. Montasir Mannan",
+      "email": "operations@cap.direct",
+      "phone": "+8801712888824",
+      "passwordHash": "$2b$08$6Ho0U1H4A7r9waJkq2KkEus5VGKLZufqQUzPqMps1teMw2dlIO8pC",
+      "passwordSet": false,
       "role": "ADMIN",
       "adminRequestStatus": "APPROVED",
-      "teamRole": "Data Analyst & Admin",
+      "teamRole": "Key Account Manager (Board Owner)",
       "approvedBy": "System Founders",
       "approvedAt": "2026-11-08T09:00:00Z",
       "requestedAt": "2026-11-08T09:00:00Z",
-      "createdAt": "2026-11-08T09:00:00Z"
+      "createdAt": "2026-11-08T09:00:00Z",
+      "aliases": [
+        "Muntasir Mannan",
+        "Md. Montasir Mannan"
+      ]
     },
     {
       "id": "U-002",
       "memberId": "M-010",
-      "name": "Syeda Neelima Dola",
-      "email": "dola@cap.com",
-      "passwordHash": "$2b$08$j2VRPPBA1FJLtjCqOB6sNebAypGAFUAOIkQaFFeEqbWPlGNFyvfp2",
+      "name": "Syeda Nilima Dola",
+      "email": "ceo@cap.direct",
+      "phone": "+8801757629895",
+      "passwordHash": "$2b$08$6Ho0U1H4A7r9waJkq2KkEus5VGKLZufqQUzPqMps1teMw2dlIO8pC",
+      "passwordSet": false,
       "role": "ADMIN",
       "adminRequestStatus": "APPROVED",
       "teamRole": "CEO",
       "approvedBy": "Muntasir Mannan",
       "approvedAt": "2026-11-08T09:15:00Z",
       "requestedAt": "2026-11-08T09:10:00Z",
-      "createdAt": "2026-11-08T09:10:00Z"
-    },
-    {
-      "id": "U-001",
-      "memberId": "M-007",
-      "name": "Muntasir Mannan",
-      "email": "muntasir@cap.com",
-      "passwordHash": "$2b$08$j2VRPPBA1FJLtjCqOB6sNebAypGAFUAOIkQaFFeEqbWPlGNFyvfp2",
-      "role": "ADMIN",
-      "adminRequestStatus": "APPROVED",
-      "teamRole": "Key Account Manager",
-      "approvedBy": "System Founders",
-      "approvedAt": "2026-11-08T09:00:00Z",
-      "requestedAt": "2026-11-08T09:00:00Z",
-      "createdAt": "2026-11-08T09:00:00Z"
+      "createdAt": "2026-11-08T09:10:00Z",
+      "aliases": [
+        "Syeda Neelima Dola",
+        "Syeda Nilima Dola",
+        "Neelima Dola"
+      ]
     },
     {
       "id": "U-003",
       "memberId": "M-001",
       "name": "Amit Pramanik",
-      "email": "amit@cap.com",
-      "passwordHash": "$2b$08$j2VRPPBA1FJLtjCqOB6sNebAypGAFUAOIkQaFFeEqbWPlGNFyvfp2",
+      "email": "creative@cap.direct",
+      "phone": "+8801840783226",
+      "passwordHash": "$2b$08$6Ho0U1H4A7r9waJkq2KkEus5VGKLZufqQUzPqMps1teMw2dlIO8pC",
+      "passwordSet": false,
       "role": "ADMIN",
       "adminRequestStatus": "APPROVED",
       "teamRole": "Creative Director",
       "approvedBy": "Muntasir Mannan",
       "approvedAt": "2026-11-08T09:30:00Z",
       "requestedAt": "2026-11-08T09:20:00Z",
-      "createdAt": "2026-11-08T09:20:00Z"
+      "createdAt": "2026-11-08T09:20:00Z",
+      "aliases": [
+        "Amit Pramanik"
+      ]
     },
     {
-      "id": "U-009",
-      "memberId": "M-009",
-      "name": "Rajat Tanmay",
-      "email": "rajat@cap.com",
-      "passwordHash": "$2b$08$j2VRPPBA1FJLtjCqOB6sNebAypGAFUAOIkQaFFeEqbWPlGNFyvfp2",
-      "role": "ADMIN",
-      "adminRequestStatus": "APPROVED",
-      "teamRole": "MD and Servicing Lead",
-      "approvedBy": "System Founders",
-      "approvedAt": "2026-11-08T09:00:00Z",
-      "requestedAt": "2026-11-08T09:00:00Z",
-      "createdAt": "2026-11-08T09:00:00Z"
-    },
-    {
-      "id": "U-011",
-      "memberId": "M-011",
-      "name": "Manjurul Mahmud",
-      "email": "manjurul@cap.com",
-      "passwordHash": "$2b$08$j2VRPPBA1FJLtjCqOB6sNebAypGAFUAOIkQaFFeEqbWPlGNFyvfp2",
-      "role": "ADMIN",
-      "adminRequestStatus": "APPROVED",
-      "teamRole": "Chief of Strategy",
-      "approvedBy": "System Founders",
-      "approvedAt": "2026-11-08T09:00:00Z",
-      "requestedAt": "2026-11-08T09:00:00Z",
-      "createdAt": "2026-11-08T09:00:00Z"
-    },
-    {
-      "id": "U-012",
-      "memberId": "M-012",
-      "name": "Meem Arafat Manab",
-      "email": "meem@cap.com",
-      "passwordHash": "$2b$08$j2VRPPBA1FJLtjCqOB6sNebAypGAFUAOIkQaFFeEqbWPlGNFyvfp2",
-      "role": "ADMIN",
-      "adminRequestStatus": "APPROVED",
-      "teamRole": "Chief of Finance",
-      "approvedBy": "System Founders",
-      "approvedAt": "2026-11-08T09:00:00Z",
-      "requestedAt": "2026-11-08T09:00:00Z",
-      "createdAt": "2026-11-08T09:00:00Z"
-    },
-    {
-      "id": "U-014",
-      "memberId": "M-014",
-      "name": "Rashed",
-      "email": "rashed@cap.com",
-      "passwordHash": "$2b$08$Qd.XcIQoQUIk1hizPhRar.X7mpgdsPuCSEXCY9tyBTXoSijoN4L7i",
-      "role": "ADMIN",
-      "adminRequestStatus": "APPROVED",
-      "teamRole": "Admin",
-      "approvedBy": "System Founders",
-      "approvedAt": "2026-11-08T09:00:00Z",
-      "requestedAt": "2026-11-08T09:00:00Z",
-      "createdAt": "2026-11-08T09:00:00Z"
-    },
-    {
-      "id": "U-000",
-      "memberId": "M-000",
-      "name": "CAP Admin",
-      "email": "admin@cap.com",
-      "passwordHash": "$2b$08$j2VRPPBA1FJLtjCqOB6sNebAypGAFUAOIkQaFFeEqbWPlGNFyvfp2",
-      "role": "ADMIN",
-      "adminRequestStatus": "APPROVED",
-      "teamRole": "System Administrator",
-      "approvedBy": "System Founders",
-      "approvedAt": "2026-11-08T09:00:00Z",
-      "requestedAt": "2026-11-08T09:00:00Z",
-      "createdAt": "2026-11-08T09:00:00Z"
-    },
-    {
-      "id": "U-008",
+      "id": "U-004",
       "memberId": "M-008",
       "name": "Tahmina Taj",
-      "email": "tahmina@cap.com",
-      "passwordHash": "$2b$08$tp5Wv89mJ6cmC5xBKdIYD.0/GBLyMM.5i2ForsVxSFBLMdbCCQ2em",
+      "email": "client.service@cap.direct",
+      "phone": "+8801643116621",
+      "passwordHash": "$2b$08$CLDgv8zXjrrT.zuST7MjrOCbe.oUspNivkqSl.3cxJwrMAOG3Y/EG",
+      "passwordSet": false,
       "role": "MEMBER",
       "adminRequestStatus": "PENDING",
       "teamRole": "Client Servicing Executive",
       "approvedBy": null,
       "approvedAt": null,
       "requestedAt": "2026-11-11T08:30:00Z",
-      "createdAt": "2026-11-09T10:00:00Z"
+      "createdAt": "2026-11-09T10:00:00Z",
+      "aliases": [
+        "Tahmina Taj"
+      ]
     },
     {
       "id": "U-005",
       "memberId": "M-003",
-      "name": "Rakib Islam",
-      "email": "rakib@cap.com",
-      "passwordHash": "$2b$08$tp5Wv89mJ6cmC5xBKdIYD.0/GBLyMM.5i2ForsVxSFBLMdbCCQ2em",
+      "name": "Md. Rakib-ul-Islam",
+      "email": "design@cap.direct",
+      "phone": "+8801955688057",
+      "passwordHash": "$2b$08$CLDgv8zXjrrT.zuST7MjrOCbe.oUspNivkqSl.3cxJwrMAOG3Y/EG",
+      "passwordSet": false,
       "role": "MEMBER",
       "adminRequestStatus": "NONE",
       "teamRole": "Sr. Visualizer",
       "approvedBy": null,
       "approvedAt": null,
       "requestedAt": null,
-      "createdAt": "2026-11-09T10:15:00Z"
+      "createdAt": "2026-11-09T10:15:00Z",
+      "aliases": [
+        "Rakib Islam",
+        "Md. Rakib-ul-Islam"
+      ]
     },
     {
       "id": "U-006",
       "memberId": "M-004",
-      "name": "Rajib Akash",
-      "email": "rajib@cap.com",
-      "passwordHash": "$2b$08$tp5Wv89mJ6cmC5xBKdIYD.0/GBLyMM.5i2ForsVxSFBLMdbCCQ2em",
+      "name": "Rajib Hossen",
+      "email": "rajibakash@gmail.com",
+      "phone": "+8801681795542",
+      "passwordHash": "$2b$08$CLDgv8zXjrrT.zuST7MjrOCbe.oUspNivkqSl.3cxJwrMAOG3Y/EG",
+      "passwordSet": false,
       "role": "MEMBER",
       "adminRequestStatus": "NONE",
       "teamRole": "Sr. Visualizer",
       "approvedBy": null,
       "approvedAt": null,
       "requestedAt": null,
-      "createdAt": "2026-11-09T10:20:00Z"
+      "createdAt": "2026-11-09T10:20:00Z",
+      "aliases": [
+        "Rajib Akash",
+        "Rajib Hossen"
+      ]
     },
     {
       "id": "U-007",
       "memberId": "M-002",
       "name": "Ragib Shahriar",
-      "email": "ragib@cap.com",
-      "passwordHash": "$2b$08$tp5Wv89mJ6cmC5xBKdIYD.0/GBLyMM.5i2ForsVxSFBLMdbCCQ2em",
+      "email": "writer@cap.direct",
+      "phone": "+8801787623050",
+      "passwordHash": "$2b$08$CLDgv8zXjrrT.zuST7MjrOCbe.oUspNivkqSl.3cxJwrMAOG3Y/EG",
+      "passwordSet": false,
       "role": "MEMBER",
       "adminRequestStatus": "NONE",
       "teamRole": "Copy Supervisor",
       "approvedBy": null,
       "approvedAt": null,
       "requestedAt": null,
-      "createdAt": "2026-11-09T10:25:00Z"
+      "createdAt": "2026-11-09T10:25:00Z",
+      "aliases": [
+        "Ragib Shahriar"
+      ]
+    },
+    {
+      "id": "U-009",
+      "memberId": "M-009",
+      "name": "Tanmay paul",
+      "email": "md@cap.direct",
+      "phone": "+8801681436919",
+      "passwordHash": "$2b$08$6Ho0U1H4A7r9waJkq2KkEus5VGKLZufqQUzPqMps1teMw2dlIO8pC",
+      "passwordSet": false,
+      "role": "ADMIN",
+      "adminRequestStatus": "APPROVED",
+      "teamRole": "MD and Servicing Lead",
+      "approvedBy": "System Founders",
+      "approvedAt": "2026-11-08T09:00:00Z",
+      "requestedAt": "2026-11-08T09:00:00Z",
+      "createdAt": "2026-11-08T09:00:00Z",
+      "aliases": [
+        "Rajat Tanmay",
+        "Tanmay paul"
+      ]
+    },
+    {
+      "id": "U-011",
+      "memberId": "M-011",
+      "name": "Manjurul Mahmud",
+      "email": "strategy@cap.direct",
+      "phone": "+4915755531545",
+      "passwordHash": "$2b$08$6Ho0U1H4A7r9waJkq2KkEus5VGKLZufqQUzPqMps1teMw2dlIO8pC",
+      "passwordSet": false,
+      "role": "ADMIN",
+      "adminRequestStatus": "APPROVED",
+      "teamRole": "Chief of Strategy",
+      "approvedBy": "System Founders",
+      "approvedAt": "2026-11-08T09:00:00Z",
+      "requestedAt": "2026-11-08T09:00:00Z",
+      "createdAt": "2026-11-08T09:00:00Z",
+      "aliases": [
+        "Manjurul Mahmud"
+      ]
+    },
+    {
+      "id": "U-012",
+      "memberId": "M-012",
+      "name": "Meem Arafat Manab",
+      "email": "data@cap.direct",
+      "phone": "+353851522813",
+      "passwordHash": "$2b$08$6Ho0U1H4A7r9waJkq2KkEus5VGKLZufqQUzPqMps1teMw2dlIO8pC",
+      "passwordSet": false,
+      "role": "ADMIN",
+      "adminRequestStatus": "APPROVED",
+      "teamRole": "Chief of Finance",
+      "approvedBy": "System Founders",
+      "approvedAt": "2026-11-08T09:00:00Z",
+      "requestedAt": "2026-11-08T09:00:00Z",
+      "createdAt": "2026-11-08T09:00:00Z",
+      "aliases": [
+        "Meem Arafat Manab",
+        "Meem Arafat"
+      ]
+    },
+    {
+      "id": "U-013",
+      "memberId": "M-013",
+      "name": "Sindid Arafat",
+      "email": "sindidarafat275@gmail.com",
+      "phone": "+8801735807816",
+      "passwordHash": "$2b$08$6Ho0U1H4A7r9waJkq2KkEus5VGKLZufqQUzPqMps1teMw2dlIO8pC",
+      "passwordSet": false,
+      "role": "ADMIN",
+      "adminRequestStatus": "APPROVED",
+      "teamRole": "Data Analyst & Admin",
+      "approvedBy": "System Founders",
+      "approvedAt": "2026-11-08T09:00:00Z",
+      "requestedAt": "2026-11-08T09:00:00Z",
+      "createdAt": "2026-11-08T09:00:00Z",
+      "aliases": [
+        "Sindid Arafat"
+      ]
+    },
+    {
+      "id": "U-014",
+      "memberId": "M-014",
+      "name": "Rashedul Islam",
+      "email": "accounts@cap.direct",
+      "phone": "+8801805033153",
+      "passwordHash": "$2b$08$6Ho0U1H4A7r9waJkq2KkEus5VGKLZufqQUzPqMps1teMw2dlIO8pC",
+      "passwordSet": false,
+      "role": "ADMIN",
+      "adminRequestStatus": "APPROVED",
+      "teamRole": "Admin",
+      "approvedBy": "System Founders",
+      "approvedAt": "2026-11-08T09:00:00Z",
+      "requestedAt": "2026-11-08T09:00:00Z",
+      "createdAt": "2026-11-08T09:00:00Z",
+      "aliases": [
+        "Rashed",
+        "Rashedul Islam"
+      ]
     },
     {
       "id": "U-015",
       "memberId": "M-005",
-      "name": "Laxmi",
-      "email": "laxmi@cap.com",
-      "passwordHash": "$2b$08$tp5Wv89mJ6cmC5xBKdIYD.0/GBLyMM.5i2ForsVxSFBLMdbCCQ2em",
+      "name": "Nusrat Laxme",
+      "email": "nusratlaxme123@gmail.com",
+      "phone": "+8801628586049",
+      "passwordHash": "$2b$08$CLDgv8zXjrrT.zuST7MjrOCbe.oUspNivkqSl.3cxJwrMAOG3Y/EG",
+      "passwordSet": false,
       "role": "MEMBER",
       "adminRequestStatus": "NONE",
       "teamRole": "Jr. Visualizer",
       "approvedBy": null,
       "approvedAt": null,
       "requestedAt": null,
-      "createdAt": "2026-11-09T10:30:00Z"
+      "createdAt": "2026-11-09T10:30:00Z",
+      "aliases": [
+        "Laxmi",
+        "Nusrat Laxme"
+      ]
     },
     {
       "id": "U-016",
       "memberId": "M-006",
-      "name": "Hasin Bijoy",
-      "email": "hasin@cap.com",
-      "passwordHash": "$2b$08$tp5Wv89mJ6cmC5xBKdIYD.0/GBLyMM.5i2ForsVxSFBLMdbCCQ2em",
+      "name": "Hasin Ishraq Bijoy",
+      "email": "visualizer@cap.direct",
+      "phone": "+8801786039319",
+      "passwordHash": "$2b$08$CLDgv8zXjrrT.zuST7MjrOCbe.oUspNivkqSl.3cxJwrMAOG3Y/EG",
+      "passwordSet": false,
       "role": "MEMBER",
       "adminRequestStatus": "NONE",
       "teamRole": "Video Editor",
       "approvedBy": null,
       "approvedAt": null,
       "requestedAt": null,
-      "createdAt": "2026-11-09T10:35:00Z"
+      "createdAt": "2026-11-09T10:35:00Z",
+      "aliases": [
+        "Hasin Bijoy",
+        "Hasin Ishraq Bijoy"
+      ]
     },
     {
-      "id": "U-999",
-      "memberId": "M-999",
-      "name": "General Member",
-      "email": "member@cap.com",
-      "passwordHash": "$2b$08$tp5Wv89mJ6cmC5xBKdIYD.0/GBLyMM.5i2ForsVxSFBLMdbCCQ2em",
-      "role": "MEMBER",
-      "adminRequestStatus": "NONE",
-      "teamRole": "Team Member",
-      "approvedBy": null,
-      "approvedAt": null,
-      "requestedAt": null,
-      "createdAt": "2026-11-09T10:40:00Z"
+      "id": "U-017",
+      "memberId": "M-015",
+      "name": "Hasib Mohammad Ashiq",
+      "email": "office@cap.direct",
+      "phone": "+8801672824324",
+      "passwordHash": "$2b$08$6Ho0U1H4A7r9waJkq2KkEus5VGKLZufqQUzPqMps1teMw2dlIO8pC",
+      "passwordSet": false,
+      "role": "ADMIN",
+      "adminRequestStatus": "APPROVED",
+      "teamRole": "Office & Operations Lead",
+      "approvedBy": "System Founders",
+      "approvedAt": "2026-11-08T09:00:00Z",
+      "requestedAt": "2026-11-08T09:00:00Z",
+      "createdAt": "2026-11-08T09:00:00Z",
+      "aliases": [
+        "Hasib Mohammad Ashiq",
+        "Hasib Ashiq"
+      ]
+    },
+    {
+      "id": "U-000",
+      "memberId": "M-000",
+      "name": "CAP Admin",
+      "email": "admin@cap.direct",
+      "phone": "+8801700000000",
+      "passwordHash": "$2b$08$6Ho0U1H4A7r9waJkq2KkEus5VGKLZufqQUzPqMps1teMw2dlIO8pC",
+      "passwordSet": true,
+      "role": "ADMIN",
+      "adminRequestStatus": "APPROVED",
+      "teamRole": "System Administrator",
+      "approvedBy": "System Founders",
+      "approvedAt": "2026-11-08T09:00:00Z",
+      "requestedAt": "2026-11-08T09:00:00Z",
+      "createdAt": "2026-11-08T09:00:00Z",
+      "aliases": [
+        "CAP Admin",
+        "Admin"
+      ]
     }
   ],
   "activityLog": [

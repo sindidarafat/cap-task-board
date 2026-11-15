@@ -84,6 +84,9 @@ export interface TeamMember {
   team: "Creative" | "Servicing" | "C-Suite" | "Strategy and Data" | "Admin" | string;
   dailyCapacity: number;
   notes: string;
+  phone?: string;
+  email?: string;
+  aliases?: string[];
 }
 
 export type UserRole = "ADMIN" | "MEMBER";
@@ -94,7 +97,9 @@ export interface UserAccount {
   memberId?: string;
   name: string;
   email: string;
+  phone?: string;
   passwordHash: string;
+  passwordSet?: boolean;
   role: UserRole;
   adminRequestStatus: AdminRequestStatus;
   teamRole: string;
@@ -102,6 +107,7 @@ export interface UserAccount {
   approvedAt: string | null;
   requestedAt: string | null;
   createdAt: string;
+  aliases?: string[];
 }
 
 export type SafeUserAccount = Omit<UserAccount, "passwordHash">;

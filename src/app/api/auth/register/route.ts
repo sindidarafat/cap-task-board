@@ -7,21 +7,20 @@ import { UserAccount } from "@/lib/types";
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
+    const action = body.action as string | undefined; // "set_password" | "new_user"
+    const userId = body.userId as string | undefined;
     const name = (body.name || "").trim();
     let email = (body.email || "").trim().toLowerCase();
+    const phone = (body.phone || "").trim();
     const password = body.password || "";
-    const teamRole = (body.teamRole || "Team Member").trim();
+    const teamRole = (body.teamRole || body.title || "Team Member").trim();
     const requestedAccountType = body.accountType === "ADMIN" ? "ADMIN" : "MEMBER";
 
-    if (!name || !email || !password) {
+    if (!password) {
       return NextResponse.json(
-        { error: "Name, email, and password are required." },
+        { error: "Password is required." },
         { status: 400 }
       );
-    }
-
-    if (!email.includes("@")) {
-      email = `${email}@cap.com`;
     }
 
     if (password.length < 4) {
@@ -32,35 +31,92 @@ export async function POST(request: NextRequest) {
     }
 
     const db = await getDb();
+
+    // Case 1: Existing member setting their password (first time activation)
+    if (action === "set_password" || (userId && !email)) {
+      let existingUser = db.users.find(
+        (u) =>
+          (userId && u.id === userId) ||
+          (email && u.email.toLowerCase() === email) ||
+          (name && (u.name.toLowerCase() === name.toLowerCase() || u.aliases?.some(a => a.toLowerCase() === name.toLowerCase())))
+      );
+
+      // Support Sindid Arafat alternate email
+      if (!existingUser && (email === "analyst@cap.direct" || email === "sindidarafat275@gmail.com")) {
+        existingUser = db.users.find((u) => u.name === "Sindid Arafat");
+      }
+
+      if (existingUser) {
+        const passwordHash = await bcrypt.hash(password, 8);
+        existingUser.passwordHash = passwordHash;
+        existingUser.passwordSet = true;
+        if (phone && !existingUser.phone) existingUser.phone = phone;
+
+        // Also update phone on corresponding team member if present
+        const matchedMember = db.team.find((m) => m.id === existingUser?.memberId || m.name === existingUser?.name);
+        if (matchedMember && phone) {
+          matchedMember.phone = phone;
+        }
+
+        appendActivity(db, {
+          actorName: existingUser.name,
+          actorEmail: existingUser.email,
+          action: "Activated Account Password",
+          details: `${existingUser.name} (${existingUser.email}) set their password and activated account.`,
+          category: "ADMIN_ROOM",
+        });
+
+        await saveDb(db);
+
+        const safeUser = sanitizeUser(existingUser);
+        const token = signSessionToken(safeUser);
+
+        const response = NextResponse.json({
+          user: safeUser,
+          token,
+          passwordHash,
+          userRecord: existingUser,
+          message: `Password set successfully! Welcome to CAP Task Board, ${safeUser.name}.`,
+        });
+
+        response.cookies.set(SESSION_COOKIE_NAME, token, {
+          httpOnly: true,
+          sameSite: "lax",
+          path: "/",
+          maxAge: 60 * 60 * 24 * 14,
+        });
+
+        return response;
+      }
+    }
+
+    // Case 2: Standard or New User Registration
+    if (!name || !email) {
+      return NextResponse.json(
+        { error: "Full Name and Email are required." },
+        { status: 400 }
+      );
+    }
+
+    if (!email.includes("@")) {
+      email = `${email}@cap.direct`;
+    }
+
     const existingUserIndex = db.users.findIndex((u) => u.email.toLowerCase() === email);
 
-    // If account already exists in pre-seeded roster, allow user to set their password and sign in directly
+    // If an account already exists with this email, update its password
     if (existingUserIndex >= 0) {
       const existingUser = db.users[existingUserIndex];
       const passwordHash = await bcrypt.hash(password, 8);
       existingUser.passwordHash = passwordHash;
+      existingUser.passwordSet = true;
       if (name) existingUser.name = name;
+      if (phone) existingUser.phone = phone;
       if (teamRole && teamRole !== "Team Member") existingUser.teamRole = teamRole;
 
-      // Never demote an existing Admin. If user is already an approved admin, keep admin privileges.
-      if (existingUser.role === "ADMIN" && existingUser.adminRequestStatus === "APPROVED") {
-        appendActivity(db, {
-          actorName: existingUser.name,
-          actorEmail: existingUser.email,
-          action: "Updated Account Password",
-          details: `${existingUser.name} (${existingUser.email}) set/updated their Admin password.`,
-          category: "ADMIN_ROOM",
-        });
-      } else if (requestedAccountType === "ADMIN" && existingUser.role !== "ADMIN") {
+      if (requestedAccountType === "ADMIN" && existingUser.role !== "ADMIN") {
         existingUser.adminRequestStatus = "PENDING";
         existingUser.requestedAt = new Date().toISOString();
-        appendActivity(db, {
-          actorName: existingUser.name,
-          actorEmail: existingUser.email,
-          action: "Requested Admin Account Approval",
-          details: `${existingUser.name} requested Admin access. Waiting for approval in the Admin Room.`,
-          category: "ADMIN_ROOM",
-        });
       }
 
       await saveDb(db);
@@ -72,10 +128,7 @@ export async function POST(request: NextRequest) {
         token,
         passwordHash,
         userRecord: existingUser,
-        message:
-          requestedAccountType === "ADMIN" && existingUser.role !== "ADMIN"
-            ? "Password set! Your request for Admin access is pending approval in the Admin Room."
-            : `Password set successfully! Signed in as ${safeUser.name}.`,
+        message: `Account updated successfully! Signed in as ${safeUser.name}.`,
       });
 
       response.cookies.set(SESSION_COOKIE_NAME, token, {
@@ -88,6 +141,7 @@ export async function POST(request: NextRequest) {
       return response;
     }
 
+    // Creating a brand-new user
     const passwordHash = await bcrypt.hash(password, 8);
     const now = new Date().toISOString();
     const hasExistingAdmins = db.users.some(
@@ -96,7 +150,7 @@ export async function POST(request: NextRequest) {
 
     const isAutoApprovedFirstAdmin = requestedAccountType === "ADMIN" && !hasExistingAdmins;
 
-    // Match with existing team members from Excel data (M-001 to M-014) or create a new Member ID
+    // Check if name matches any existing team member in db.team
     const matchedTeamMember = db.team.find(
       (m) =>
         m.name.trim().toLowerCase() === name.toLowerCase() ||
@@ -112,6 +166,12 @@ export async function POST(request: NextRequest) {
       memberId = matchedTeamMember.id;
       if (!teamRole || teamRole === "Team Member") {
         finalTeamRole = matchedTeamMember.role || "Team Member";
+      }
+      if (phone && !matchedTeamMember.phone) {
+        matchedTeamMember.phone = phone;
+      }
+      if (email && !matchedTeamMember.email) {
+        matchedTeamMember.email = email;
       }
     } else {
       const existingNumericIds = db.team
@@ -133,6 +193,8 @@ export async function POST(request: NextRequest) {
         team: "Creative",
         dailyCapacity: 6,
         notes: "Registered via web account creation",
+        phone,
+        email,
       });
     }
 
@@ -141,7 +203,9 @@ export async function POST(request: NextRequest) {
       memberId,
       name: finalName,
       email,
+      phone,
       passwordHash,
+      passwordSet: true,
       role: isAutoApprovedFirstAdmin ? "ADMIN" : "MEMBER",
       adminRequestStatus:
         requestedAccountType === "ADMIN"
@@ -154,31 +218,18 @@ export async function POST(request: NextRequest) {
       approvedAt: isAutoApprovedFirstAdmin ? now : null,
       requestedAt: requestedAccountType === "ADMIN" ? now : null,
       createdAt: now,
+      aliases: [finalName],
     };
 
     db.users.push(newUser);
 
-    if (requestedAccountType === "ADMIN") {
-      appendActivity(db, {
-        actorName: name,
-        actorEmail: email,
-        action: isAutoApprovedFirstAdmin
-          ? "Created First Admin Account"
-          : "Registered & Requested Admin Approval",
-        details: isAutoApprovedFirstAdmin
-          ? `${name} (${teamRole}) registered as the initial Admin.`
-          : `${name} (${teamRole}) registered and requested Admin access. Waiting for approval from an existing Admin in the Admin Room.`,
-        category: "ADMIN_ROOM",
-      });
-    } else {
-      appendActivity(db, {
-        actorName: name,
-        actorEmail: email,
-        action: "Registered Member Account",
-        details: `${name} (${teamRole}) joined as a view-only Member.`,
-        category: "ADMIN_ROOM",
-      });
-    }
+    appendActivity(db, {
+      actorName: name,
+      actorEmail: email,
+      action: requestedAccountType === "ADMIN" ? "Registered Admin Account" : "Registered Member Account",
+      details: `${name} (${finalTeamRole}) registered with phone ${phone || "N/A"}.`,
+      category: "ADMIN_ROOM",
+    });
 
     await saveDb(db);
 
@@ -192,7 +243,7 @@ export async function POST(request: NextRequest) {
       userRecord: newUser,
       message:
         requestedAccountType === "ADMIN" && !isAutoApprovedFirstAdmin
-          ? "Account created! You currently have Member (view-only) access until an existing Admin approves your Admin request in the Admin Room."
+          ? "Account created! You have Member access while your Admin elevation is reviewed."
           : `Account created successfully! Signed in as ${safeUser.name}.`,
     });
 
