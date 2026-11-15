@@ -31,8 +31,6 @@ export default function SendReminderDropdown({
   defaultTaskDetails = "",
 }: SendReminderDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [useWhatsApp, setUseWhatsApp] = useState(true);
-  const [useEmail, setUseEmail] = useState(false);
   const [taskDetails, setTaskDetails] = useState(defaultTaskDetails);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -72,18 +70,15 @@ export default function SendReminderDropdown({
 
   const isOverWordLimit = wordCount > 500;
 
-  // Set default channel selections when opened
+  // Reset fields when opened
   useEffect(() => {
     if (isOpen) {
       setError("");
-      // Default to what is available
-      setUseWhatsApp(Boolean(resolvedInfo.phone));
-      setUseEmail(Boolean(resolvedInfo.email && !resolvedInfo.phone));
       if (defaultTaskDetails) {
         setTaskDetails(defaultTaskDetails);
       }
     }
-  }, [isOpen, resolvedInfo.phone, resolvedInfo.email, defaultTaskDetails]);
+  }, [isOpen, defaultTaskDetails]);
 
   // Only render button if the user is an admin
   if (!isAdmin) return null;
@@ -92,12 +87,8 @@ export default function SendReminderDropdown({
     e.preventDefault();
     setError("");
 
-    const channels: string[] = [];
-    if (useWhatsApp) channels.push("whatsapp");
-    if (useEmail) channels.push("email");
-
-    if (channels.length === 0) {
-      setError("Please tick mark at least one option: WhatsApp, Email, or both.");
+    if (!resolvedInfo.email) {
+      setError(`No email address registered for ${resolvedInfo.name}. Please add their email in the roster or profile.`);
       return;
     }
 
@@ -111,16 +102,6 @@ export default function SendReminderDropdown({
       return;
     }
 
-    if (useWhatsApp && !resolvedInfo.phone) {
-      setError(`No phone number found for ${resolvedInfo.name}. Please enter their phone number or uncheck WhatsApp.`);
-      return;
-    }
-
-    if (useEmail && !resolvedInfo.email) {
-      setError(`No email address found for ${resolvedInfo.name}. Please enter their email or uncheck Email.`);
-      return;
-    }
-
     setBusy(true);
     try {
       const data = await apiFetch("/api/reminders/send", {
@@ -130,40 +111,22 @@ export default function SendReminderDropdown({
           memberId: resolvedInfo.id,
           phone: resolvedInfo.phone,
           email: resolvedInfo.email,
-          channels,
+          channels: ["email"],
           message: taskDetails.trim(),
         }),
       });
 
-      // Launch WhatsApp chat if selected
-      if (useWhatsApp && data.whatsappUrl) {
-        window.open(data.whatsappUrl, "_blank", "noopener,noreferrer");
-      }
-
-      // Check Email delivery result
-      let emailStatusMsg = "";
-      if (useEmail) {
-        if (data.directEmailSent) {
-          emailStatusMsg = `Direct email successfully delivered to ${resolvedInfo.email} via Resend.`;
+      if (data.directEmailSent) {
+        onSuccess(`Direct reminder email successfully sent to ${resolvedInfo.name} (${resolvedInfo.email})!`);
+      } else {
+        if (data.mailtoUrl) {
+          window.location.href = data.mailtoUrl;
+          onSuccess(`Email draft opened (${data.emailError || "Direct sending unavailable"}).`);
         } else {
-          // If direct sending could not proceed (e.g. API key not set yet), open mailto draft
-          if (data.mailtoUrl) {
-            window.location.href = data.mailtoUrl;
-            emailStatusMsg = `Email draft opened in your mail app (${data.emailError || "Direct sending unavailable"}).`;
-          }
+          onSuccess(`Reminder logged for ${resolvedInfo.name}.`);
         }
       }
 
-      let finalMsg = "";
-      if (useWhatsApp && useEmail) {
-        finalMsg = `Reminder sent! WhatsApp opened & ${emailStatusMsg || `Email dispatched to ${resolvedInfo.email}`}`;
-      } else if (useWhatsApp) {
-        finalMsg = `WhatsApp reminder opened for ${resolvedInfo.name} (${resolvedInfo.phone})!`;
-      } else {
-        finalMsg = emailStatusMsg || `Email reminder sent to ${resolvedInfo.name} (${resolvedInfo.email})!`;
-      }
-
-      onSuccess(finalMsg);
       setIsOpen(false);
       setTaskDetails("");
     } catch (err: unknown) {
@@ -178,8 +141,8 @@ export default function SendReminderDropdown({
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md border border-[#cbd5e1] bg-white hover:bg-[#f0f4ff] hover:border-[#1f2d5a] text-[#1f2d5a] text-[11px] font-bold cursor-pointer transition-colors shadow-2xs shrink-0"
-        title={`Send WhatsApp or Email reminder to ${resolvedInfo.name}`}
+        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md border border-[#cbd5e1] bg-white hover:bg-[#f0f4ff] hover:border-[#1f2d5a] text-[#1f2d5a] text-[11.5px] font-bold cursor-pointer transition-colors shadow-2xs shrink-0"
+        title={`Send Email reminder to ${resolvedInfo.name}`}
       >
         <span>🔔</span>
         <span>Send Reminder</span>
@@ -215,67 +178,23 @@ export default function SendReminderDropdown({
                 </div>
               )}
 
-              {/* Options Section: 1- WhatsApp, 2- Email */}
-              <div className="space-y-2">
-                <label className="block text-[12.5px] font-bold text-[#1f2d5a]">
-                  Choose Delivery Channel (tick mark 1, 2, or both):
-                </label>
-
-                <div className="grid grid-cols-1 gap-2">
-                  {/* Option 1: WhatsApp */}
-                  <label
-                    className={`flex items-center gap-3 p-2.5 rounded-lg border transition-all cursor-pointer ${
-                      useWhatsApp
-                        ? "bg-[#f0fdf4] border-[#86efac] shadow-2xs"
-                        : "bg-[#f8f9fc] border-[#e2e8f0] opacity-80"
-                    }`}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={useWhatsApp}
-                      onChange={(e) => setUseWhatsApp(e.target.checked)}
-                      className="w-4 h-4 rounded text-[#059669] focus:ring-0 cursor-pointer"
-                    />
-                    <div className="flex-1">
-                      <div className="flex items-center gap-1.5 font-bold text-[13px] text-[#166534]">
-                        <span>💬 1- WhatsApp</span>
-                        <span className="text-[10.5px] font-semibold bg-[#dcfce7] text-[#15803d] px-1.5 py-0.2 rounded">
-                          Instant
-                        </span>
-                      </div>
-                      <p className="text-[11.5px] text-[#374151] font-mono-code">
-                        {resolvedInfo.phone || "(No phone registered on platform)"}
-                      </p>
-                    </div>
-                  </label>
-
-                  {/* Option 2: Email */}
-                  <label
-                    className={`flex items-center gap-3 p-2.5 rounded-lg border transition-all cursor-pointer ${
-                      useEmail
-                        ? "bg-[#eff6ff] border-[#93c5fd] shadow-2xs"
-                        : "bg-[#f8f9fc] border-[#e2e8f0] opacity-80"
-                    }`}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={useEmail}
-                      onChange={(e) => setUseEmail(e.target.checked)}
-                      className="w-4 h-4 rounded text-[#2563eb] focus:ring-0 cursor-pointer"
-                    />
-                    <div className="flex-1">
-                      <div className="flex items-center gap-1.5 font-bold text-[13px] text-[#1e40af]">
-                        <span>✉️ 2- Email</span>
-                        <span className="text-[10.5px] font-semibold bg-[#dbeafe] text-[#1d4ed8] px-1.5 py-0.2 rounded">
-                          Direct Send
-                        </span>
-                      </div>
-                      <p className="text-[11.5px] text-[#374151] font-mono-code truncate">
-                        {resolvedInfo.email || "(No email registered on platform)"}
-                      </p>
-                    </div>
-                  </label>
+              {/* Recipient Information Card */}
+              <div className="bg-[#eff6ff] border border-[#bfdbfe] rounded-lg p-3 flex items-center justify-between">
+                <div>
+                  <span className="text-[11px] font-bold text-[#1e40af] uppercase tracking-wide">
+                    Delivery: Direct Email
+                  </span>
+                  <div className="text-[13px] font-semibold text-[#1e2330] mt-0.5">
+                    {resolvedInfo.email ? (
+                      <span className="font-mono-code">{resolvedInfo.email}</span>
+                    ) : (
+                      <span className="text-[#dc2626]">No email registered for {resolvedInfo.name}</span>
+                    )}
+                  </div>
                 </div>
+                <span className="text-[10.5px] font-bold bg-[#dbeafe] text-[#1d4ed8] px-2 py-0.5 rounded">
+                  Resend
+                </span>
               </div>
 
               {/* Task Details Section: Up to 500 words */}
@@ -296,7 +215,7 @@ export default function SendReminderDropdown({
                 </div>
 
                 <textarea
-                  rows={4}
+                  rows={5}
                   required
                   value={taskDetails}
                   onChange={(e) => setTaskDetails(e.target.value)}
@@ -305,7 +224,7 @@ export default function SendReminderDropdown({
                 />
 
                 <p className="text-[11px] text-[#64748b]">
-                  The user will receive this exact message through WhatsApp and/or Email to their credentials registered on the platform.
+                  The employee will receive this message directly in their registered email inbox via Resend.
                 </p>
               </div>
 
@@ -321,7 +240,7 @@ export default function SendReminderDropdown({
                 </button>
                 <button
                   type="submit"
-                  disabled={busy || (!useWhatsApp && !useEmail) || isOverWordLimit}
+                  disabled={busy || !resolvedInfo.email || isOverWordLimit}
                   className="px-4 py-1.5 rounded-lg bg-[#e8792b] hover:bg-[#d76a1e] text-white text-[12.5px] font-bold cursor-pointer disabled:opacity-50 transition-colors shadow-xs flex items-center gap-1.5"
                 >
                   <span>{busy ? "Sending..." : "Send Reminder"}</span>

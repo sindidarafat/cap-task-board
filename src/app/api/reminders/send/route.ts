@@ -16,19 +16,11 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const memberName = (body.memberName || "").trim();
     const memberId = (body.memberId || "").trim();
-    const channels = Array.isArray(body.channels) ? body.channels : [];
     const message = (body.message || "").trim();
 
     if (!memberName && !memberId) {
       return NextResponse.json(
         { error: "Member name or ID is required." },
-        { status: 400 }
-      );
-    }
-
-    if (!channels.includes("whatsapp") && !channels.includes("email")) {
-      return NextResponse.json(
-        { error: "Please select at least one delivery channel (WhatsApp and/or Email)." },
         { status: 400 }
       );
     }
@@ -66,79 +58,48 @@ export async function POST(request: NextRequest) {
     );
 
     const resolvedName = teamMember?.name || userAccount?.name || memberName;
-    const resolvedPhone = (teamMember?.phone || userAccount?.phone || body.phone || "").trim();
     const resolvedEmail = (teamMember?.email || userAccount?.email || body.email || "").trim();
+    const resolvedPhone = (teamMember?.phone || userAccount?.phone || body.phone || "").trim();
 
-    if (channels.includes("whatsapp") && !resolvedPhone) {
-      return NextResponse.json(
-        { error: `Cannot send WhatsApp reminder: No phone number registered for ${resolvedName}. Please update their phone number first.` },
-        { status: 400 }
-      );
-    }
-
-    if (channels.includes("email") && !resolvedEmail) {
+    if (!resolvedEmail) {
       return NextResponse.json(
         { error: `Cannot send Email reminder: No email registered for ${resolvedName}. Please update their email first.` },
         { status: 400 }
       );
     }
 
-    // Format WhatsApp deep link
-    let whatsappUrl = "";
-    if (channels.includes("whatsapp") && resolvedPhone) {
-      const cleanDigits = resolvedPhone.replace(/[^0-9]/g, "");
-      whatsappUrl = `https://wa.me/${cleanDigits}?text=${encodeURIComponent(message)}`;
-    }
-
     // Format mailto link (used as fallback or manual review)
-    let mailtoUrl = "";
-    if (channels.includes("email") && resolvedEmail) {
-      const subject = `CAP Task Board Reminder for ${resolvedName}`;
-      mailtoUrl = `mailto:${resolvedEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(message)}`;
-    }
+    const subject = `CAP Task Board Reminder for ${resolvedName}`;
+    const mailtoUrl = `mailto:${resolvedEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(message)}`;
 
     // Direct background email dispatch via Resend
     let directEmailSent = false;
     let directEmailMessageId: string | null = null;
     let emailError: string | null = null;
 
-    if (channels.includes("email") && resolvedEmail) {
-      const origin =
-        request.nextUrl.origin || "https://captaskboardamt.vercel.app";
-      const emailResult = await sendReminderEmail({
-        to: resolvedEmail,
-        recipientName: resolvedName,
-        senderName: currentUser!.name,
-        message,
-        siteUrl: origin,
-      });
+    const origin =
+      request.nextUrl.origin || "https://captaskboardamt.vercel.app";
+    const emailResult = await sendReminderEmail({
+      to: resolvedEmail,
+      recipientName: resolvedName,
+      senderName: currentUser!.name,
+      message,
+      siteUrl: origin,
+    });
 
-      if (emailResult.success) {
-        directEmailSent = true;
-        directEmailMessageId = emailResult.messageId || null;
-      } else {
-        emailError = emailResult.error || "Failed to deliver email through Resend.";
-      }
+    if (emailResult.success) {
+      directEmailSent = true;
+      directEmailMessageId = emailResult.messageId || null;
+    } else {
+      emailError = emailResult.error || "Failed to deliver email through Resend.";
     }
 
     // Log the reminder in the activity log
-    const channelLabels: string[] = [];
-    if (channels.includes("whatsapp")) channelLabels.push("WhatsApp");
-    if (channels.includes("email")) {
-      channelLabels.push(
-        directEmailSent
-          ? "Direct Email (Resend)"
-          : emailError
-          ? "Email (Resend error, mailto fallback)"
-          : "Email"
-      );
-    }
-
     appendActivity(db, {
       actorName: currentUser!.name,
       actorEmail: currentUser!.email,
-      action: `Sent Task Reminder via ${channelLabels.join(" & ")}`,
-      details: `Admin ${currentUser!.name} sent a reminder to ${resolvedName} (${resolvedPhone || "No phone"} / ${resolvedEmail || "No email"}). Direct Email: ${directEmailSent ? "Delivered (" + directEmailMessageId + ")" : emailError ? "Failed (" + emailError + ")" : "N/A"}. Task Message: "${message.slice(0, 150)}${message.length > 150 ? "..." : ""}"`,
+      action: `Sent Task Reminder via Email`,
+      details: `Admin ${currentUser!.name} sent an email reminder to ${resolvedName} (${resolvedEmail}). Direct Delivery: ${directEmailSent ? "Success (" + directEmailMessageId + ")" : emailError ? "Failed (" + emailError + ")" : "N/A"}. Message: "${message.slice(0, 150)}${message.length > 150 ? "..." : ""}"`,
       category: "TASK",
     });
 
@@ -149,11 +110,10 @@ export async function POST(request: NextRequest) {
       memberName: resolvedName,
       phone: resolvedPhone,
       email: resolvedEmail,
-      channels,
+      channels: ["email"],
       directEmailSent,
       directEmailMessageId,
       emailError,
-      whatsappUrl,
       mailtoUrl,
       message,
     });

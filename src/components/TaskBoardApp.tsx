@@ -29,7 +29,6 @@ import {
 import TaskFormModal from "./TaskFormModal";
 import ExportCsvModal from "./ExportCsvModal";
 import UpdateInfoModal from "./UpdateInfoModal";
-import SendReminderDropdown from "./SendReminderDropdown";
 import AdminRoomView from "./AdminRoomView";
 import StickyTable from "./StickyTable";
 import {
@@ -1546,20 +1545,7 @@ export default function TaskBoardApp() {
                           </td>
                           <td className="py-3 px-3 font-medium text-[#1e2330] whitespace-nowrap">
                             {t.owner ? (
-                              <div className="flex items-center justify-between gap-2">
-                                <MemberTag name={t.owner} idMap={memberIdMap} />
-                                {isAdmin && (
-                                  <SendReminderDropdown
-                                    memberName={t.owner}
-                                    team={team}
-                                    users={users}
-                                    isAdmin={isAdmin}
-                                    apiFetch={apiFetch}
-                                    onSuccess={(msg) => showToast(msg)}
-                                    defaultTaskDetails={`Task: ${t.task} (${t.client})\nInternal Deadline: ${t.internalDeadline || "None"}\nStatus: ${t.status}\nPriority: ${t.priority}`}
-                                  />
-                                )}
-                              </div>
+                              <MemberTag name={t.owner} idMap={memberIdMap} />
                             ) : (
                               <span className="text-[#9c0006] font-semibold italic">
                                 Unassigned
@@ -1651,21 +1637,9 @@ export default function TaskBoardApp() {
             {/* Member Header & Selector */}
             <div className="bg-white rounded-lg border border-[#dce1ec] p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 shadow-xs">
               <div>
-                <div className="flex items-center gap-3">
-                  <h2 className="text-lg font-bold text-[#1f2d5a]">
-                    My Works — {selectedMemberName}
-                  </h2>
-                  {isAdmin && (
-                    <SendReminderDropdown
-                      memberName={selectedMemberName}
-                      team={team}
-                      users={users}
-                      isAdmin={isAdmin}
-                      apiFetch={apiFetch}
-                      onSuccess={(msg) => showToast(msg)}
-                    />
-                  )}
-                </div>
+                <h2 className="text-lg font-bold text-[#1f2d5a]">
+                  My Works — {selectedMemberName}
+                </h2>
                 <p className="text-[13px] text-[#3b4254]">
                   Ongoing tasks assigned to {selectedMemberName === currentUser.name ? "you" : selectedMemberName}, ordered by urgency and deadline.
                 </p>
@@ -2177,20 +2151,7 @@ export default function TaskBoardApp() {
                                 ))}
                               </select>
                             ) : t.owner ? (
-                              <div className="flex items-center justify-between gap-2">
-                                <MemberTag name={t.owner} idMap={memberIdMap} />
-                                {isAdmin && (
-                                  <SendReminderDropdown
-                                    memberName={t.owner}
-                                    team={team}
-                                    users={users}
-                                    isAdmin={isAdmin}
-                                    apiFetch={apiFetch}
-                                    onSuccess={(msg) => showToast(msg)}
-                                    defaultTaskDetails={`Task: ${t.task} (${t.client})\nInternal Deadline: ${t.internalDeadline || "None"}\nStatus: ${t.status}\nPriority: ${t.priority}`}
-                                  />
-                                )}
-                              </div>
+                              <MemberTag name={t.owner} idMap={memberIdMap} />
                             ) : (
                               "—"
                             )}

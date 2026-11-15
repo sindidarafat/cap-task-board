@@ -88,19 +88,7 @@ export function ComingUpView({
                       className="even:bg-[#f8f9fc] hover:bg-[#eef1f8] transition-colors"
                     >
                       <td className="py-3 px-4 font-semibold text-[#1e2330]">
-                        <div className="flex items-center justify-between gap-2">
-                          <MemberTag name={row.person} idMap={memberIdMap} />
-                          {isAdmin && apiFetch && (
-                            <SendReminderDropdown
-                              memberName={row.person}
-                              team={team}
-                              users={users}
-                              isAdmin={isAdmin}
-                              apiFetch={apiFetch}
-                              onSuccess={onSuccess || (() => {})}
-                            />
-                          )}
-                        </div>
+                        <MemberTag name={row.person} idMap={memberIdMap} />
                       </td>
                       <td className="py-3 px-3 font-medium text-[#2d3446]">{row.team}</td>
                       <td className="py-3 px-3 text-center font-mono-code">
@@ -338,19 +326,7 @@ export function ScorecardView({
                   className="even:bg-[#f8f9fc] hover:bg-[#eef1f8] transition-colors"
                 >
                   <td className="py-3 px-4 font-semibold text-[#1e2330]">
-                    <div className="flex items-center justify-between gap-2">
-                      <MemberTag name={r.person} idMap={memberIdMap} />
-                      {isAdmin && apiFetch && (
-                        <SendReminderDropdown
-                          memberName={r.person}
-                          team={team}
-                          users={users}
-                          isAdmin={isAdmin}
-                          apiFetch={apiFetch}
-                          onSuccess={onSuccess || (() => {})}
-                        />
-                      )}
-                    </div>
+                    <MemberTag name={r.person} idMap={memberIdMap} />
                   </td>
                   <td className="py-3 px-3 font-medium text-[#2d3446]">{r.team}</td>
                   <td className="py-3 px-3 text-center font-mono-code font-bold text-[#1f2d5a]">
