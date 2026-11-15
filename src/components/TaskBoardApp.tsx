@@ -28,7 +28,7 @@ import {
 } from "./BadgeHelpers";
 import TaskFormModal from "./TaskFormModal";
 import ExportCsvModal from "./ExportCsvModal";
-import UpdatePasswordModal from "./UpdatePasswordModal";
+import UpdateInfoModal from "./UpdateInfoModal";
 import AdminRoomView from "./AdminRoomView";
 import StickyTable from "./StickyTable";
 import {
@@ -235,8 +235,8 @@ export default function TaskBoardApp() {
     name: string;
   } | null>(null);
 
-  // Update password modal on dashboard
-  const [showUpdatePasswordModal, setShowUpdatePasswordModal] = useState(false);
+  // Update info modal on dashboard
+  const [showUpdateInfoModal, setShowUpdateInfoModal] = useState(false);
 
   // Task Log filters & modals
   const [searchQuery, setSearchQuery] = useState("");
@@ -937,7 +937,7 @@ export default function TaskBoardApp() {
                   </button>
                 </div>
                 <p className="text-[11.5px] text-[#065f46]">
-                  You can sign in now with this password. Once signed in, you can update it anytime using the <strong>UPDATE PASSWORD</strong> button beside &apos;Sign out&apos; on the dashboard.
+                  You can sign in now with this password. Once signed in, you can update it anytime using the <strong>UPDATE INFO</strong> button beside &apos;Sign out&apos; on the dashboard.
                 </p>
                 <button
                   type="button"
@@ -1318,11 +1318,11 @@ export default function TaskBoardApp() {
               </span>
               <button
                 type="button"
-                onClick={() => setShowUpdatePasswordModal(true)}
-                className="px-2.5 py-1 rounded-md border border-[#ccd1de] bg-white hover:border-[#1f2d5a] hover:bg-[#f0f4ff] text-[#1f2d5a] text-[11.5px] font-bold uppercase tracking-wider cursor-pointer transition-colors shadow-2xs"
-                title="Update your account password"
+                onClick={() => setShowUpdateInfoModal(true)}
+                className="px-2.5 py-1 rounded-md border border-[#ccd1de] bg-white hover:border-[#1f2d5a] hover:bg-[#f0f4ff] text-[#1f2d5a] text-[12px] font-bold cursor-pointer transition-colors shadow-2xs"
+                title="Update your personal information, contact number, or password"
               >
-                Update Password
+                Update info
               </button>
               <button
                 type="button"
@@ -2531,15 +2531,18 @@ export default function TaskBoardApp() {
         onExportSuccess={(msg) => showToast(msg)}
       />
 
-      {/* Update Password Modal (accessible on dashboard beside Sign out) */}
+      {/* Update Info Modal (accessible on dashboard beside Sign out) */}
       {currentUser && (
-        <UpdatePasswordModal
-          isOpen={showUpdatePasswordModal}
-          onClose={() => setShowUpdatePasswordModal(false)}
+        <UpdateInfoModal
+          isOpen={showUpdateInfoModal}
+          onClose={() => setShowUpdateInfoModal(false)}
           currentUser={currentUser}
           apiFetch={apiFetch}
           onSuccess={(msg) => showToast(msg)}
           saveLocalPasswordHash={saveLocalPasswordHash}
+          saveLocalUserRecord={saveLocalUserRecord}
+          setCurrentUser={setCurrentUser}
+          fetchBoard={fetchBoard}
         />
       )}
     </div>
