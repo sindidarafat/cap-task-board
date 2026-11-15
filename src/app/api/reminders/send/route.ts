@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser, isApprovedAdmin } from "@/lib/auth";
 import { appendActivity, getDb, saveDb } from "@/lib/db";
+import { sendReminderEmail } from "@/lib/email";
 
 export async function POST(request: NextRequest) {
   try {
@@ -89,23 +90,55 @@ export async function POST(request: NextRequest) {
       whatsappUrl = `https://wa.me/${cleanDigits}?text=${encodeURIComponent(message)}`;
     }
 
-    // Format mailto link
+    // Format mailto link (used as fallback or manual review)
     let mailtoUrl = "";
     if (channels.includes("email") && resolvedEmail) {
       const subject = `CAP Task Board Reminder for ${resolvedName}`;
       mailtoUrl = `mailto:${resolvedEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(message)}`;
     }
 
+    // Direct background email dispatch via Resend
+    let directEmailSent = false;
+    let directEmailMessageId: string | null = null;
+    let emailError: string | null = null;
+
+    if (channels.includes("email") && resolvedEmail) {
+      const origin =
+        request.nextUrl.origin || "https://captaskboardamt.vercel.app";
+      const emailResult = await sendReminderEmail({
+        to: resolvedEmail,
+        recipientName: resolvedName,
+        senderName: currentUser!.name,
+        message,
+        siteUrl: origin,
+      });
+
+      if (emailResult.success) {
+        directEmailSent = true;
+        directEmailMessageId = emailResult.messageId || null;
+      } else {
+        emailError = emailResult.error || "Failed to deliver email through Resend.";
+      }
+    }
+
     // Log the reminder in the activity log
     const channelLabels: string[] = [];
     if (channels.includes("whatsapp")) channelLabels.push("WhatsApp");
-    if (channels.includes("email")) channelLabels.push("Email");
+    if (channels.includes("email")) {
+      channelLabels.push(
+        directEmailSent
+          ? "Direct Email (Resend)"
+          : emailError
+          ? "Email (Resend error, mailto fallback)"
+          : "Email"
+      );
+    }
 
     appendActivity(db, {
       actorName: currentUser!.name,
       actorEmail: currentUser!.email,
       action: `Sent Task Reminder via ${channelLabels.join(" & ")}`,
-      details: `Admin ${currentUser!.name} sent a reminder to ${resolvedName} (${resolvedPhone || "No phone"} / ${resolvedEmail || "No email"}). Task Message: "${message.slice(0, 150)}${message.length > 150 ? "..." : ""}"`,
+      details: `Admin ${currentUser!.name} sent a reminder to ${resolvedName} (${resolvedPhone || "No phone"} / ${resolvedEmail || "No email"}). Direct Email: ${directEmailSent ? "Delivered (" + directEmailMessageId + ")" : emailError ? "Failed (" + emailError + ")" : "N/A"}. Task Message: "${message.slice(0, 150)}${message.length > 150 ? "..." : ""}"`,
       category: "TASK",
     });
 
@@ -117,6 +150,9 @@ export async function POST(request: NextRequest) {
       phone: resolvedPhone,
       email: resolvedEmail,
       channels,
+      directEmailSent,
+      directEmailMessageId,
+      emailError,
       whatsappUrl,
       mailtoUrl,
       message,

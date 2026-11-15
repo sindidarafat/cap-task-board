@@ -169,6 +169,13 @@ export async function getDb(): Promise<DatabaseSchema> {
     db.team = initial.team;
   }
 
+  if (!db.settings) {
+    db.settings = {
+      resendApiKey: "",
+      resendFromEmail: "CAP Task Board <onboarding@resend.dev>",
+    };
+  }
+
   globalThis.__capDbCache = db;
   return db;
 }

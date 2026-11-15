@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { ActivityLogEntry, SafeUserAccount, TeamMember } from "@/lib/types";
 
 interface AdminRoomViewProps {
@@ -12,6 +12,7 @@ interface AdminRoomViewProps {
   activityLog: ActivityLogEntry[];
   onAdminAction: (payload: Record<string, unknown>) => Promise<void>;
   onRequestAdminAccess: () => Promise<void>;
+  apiFetch?: (url: string, options?: RequestInit) => Promise<any>;
 }
 
 export default function AdminRoomView({
@@ -23,6 +24,7 @@ export default function AdminRoomView({
   activityLog,
   onAdminAction,
   onRequestAdminAccess,
+  apiFetch,
 }: AdminRoomViewProps) {
   const [search, setSearch] = useState("");
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -36,6 +38,112 @@ export default function AdminRoomView({
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; text: string } | null>(
     null
   );
+
+  // Email & Resend settings state
+  const [emailConfig, setEmailConfig] = useState<{
+    isConfigured: boolean;
+    maskedApiKey: string;
+    fromEmail: string;
+    hasEnvKey: boolean;
+    hasDbKey: boolean;
+  } | null>(null);
+  const [apiKeyInput, setApiKeyInput] = useState("");
+  const [fromEmailInput, setFromEmailInput] = useState("");
+  const [savingSettings, setSavingSettings] = useState(false);
+  const [testingEmail, setTestingEmail] = useState(false);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    const fetchSettings = async () => {
+      try {
+        const fetcher = apiFetch || ((url: string) => fetch(url).then((r) => r.json()));
+        const data = await fetcher("/api/admin/settings");
+        if (data) {
+          setEmailConfig(data);
+          setFromEmailInput(data.fromEmail || "CAP Task Board <onboarding@resend.dev>");
+        }
+      } catch {
+        // ignore fetch error
+      }
+    };
+    fetchSettings();
+  }, [isAdmin, apiFetch]);
+
+  const handleSaveEmailSettings = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingSettings(true);
+    setFeedback(null);
+    try {
+      const fetcher =
+        apiFetch ||
+        ((url: string, opts: any) =>
+          fetch(url, opts).then(async (r) => {
+            const data = await r.json();
+            if (!r.ok) throw new Error(data.error || "Request failed");
+            return data;
+          }));
+      const data = await fetcher("/api/admin/settings", {
+        method: "POST",
+        body: JSON.stringify({
+          action: "update_settings",
+          resendApiKey: apiKeyInput.trim() || undefined,
+          resendFromEmail: fromEmailInput.trim() || undefined,
+        }),
+      });
+      setEmailConfig({
+        isConfigured: data.isConfigured,
+        maskedApiKey: data.maskedApiKey,
+        fromEmail: data.fromEmail,
+        hasEnvKey: emailConfig?.hasEnvKey || false,
+        hasDbKey: true,
+      });
+      setApiKeyInput("");
+      setFeedback({
+        type: "success",
+        text: "Email settings saved successfully! Direct background reminders are ready to send.",
+      });
+    } catch (err: unknown) {
+      setFeedback({
+        type: "error",
+        text: err instanceof Error ? err.message : "Failed to save settings.",
+      });
+    } finally {
+      setSavingSettings(false);
+    }
+  };
+
+  const handleSendTestEmail = async () => {
+    setTestingEmail(true);
+    setFeedback(null);
+    try {
+      const fetcher =
+        apiFetch ||
+        ((url: string, opts: any) =>
+          fetch(url, opts).then(async (r) => {
+            const data = await r.json();
+            if (!r.ok) throw new Error(data.error || "Request failed");
+            return data;
+          }));
+      const data = await fetcher("/api/admin/settings", {
+        method: "POST",
+        body: JSON.stringify({
+          action: "test_email",
+          testEmail: currentUser.email,
+        }),
+      });
+      setFeedback({
+        type: "success",
+        text: data.message || `Test email dispatched to ${currentUser.email}!`,
+      });
+    } catch (err: unknown) {
+      setFeedback({
+        type: "error",
+        text: err instanceof Error ? err.message : "Failed to send test email.",
+      });
+    } finally {
+      setTestingEmail(false);
+    }
+  };
 
   const approvedAdmins = users.filter(
     (u) => u.role === "ADMIN" && u.adminRequestStatus === "APPROVED"
@@ -394,6 +502,117 @@ export default function AdminRoomView({
           </div>
         </div>
       </div>
+
+      {/* Email & Resend Notification Settings */}
+      {isAdmin && (
+        <div className="bg-white rounded-lg border border-[#dce1ec] shadow-xs overflow-hidden">
+          <div className="px-5 py-3.5 bg-[#1f2d5a] text-white flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <span className="text-base">✉️</span>
+              <div>
+                <h3 className="text-[13.5px] font-bold">
+                  Direct Email Dispatch & Settings (Resend Integration)
+                </h3>
+                <p className="text-[11.5px] text-white/80">
+                  Sends official task reminders and password resets directly in the background (Free Tier: 3,000 emails/month).
+                </p>
+              </div>
+            </div>
+            <div>
+              {emailConfig?.isConfigured ? (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11.5px] font-bold bg-[#dcfce7] text-[#15803d]">
+                  <span className="w-2 h-2 rounded-full bg-[#16a34a] animate-pulse" />
+                  Active & Connected
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11.5px] font-bold bg-[#fef3c7] text-[#92400e]">
+                  <span className="w-2 h-2 rounded-full bg-[#f59e0b]" />
+                  Configuration Needed
+                </span>
+              )}
+            </div>
+          </div>
+
+          <form onSubmit={handleSaveEmailSettings} className="p-5 space-y-4 bg-[#fbfcfe]">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-[12.5px] font-bold text-[#1f2d5a] mb-1">
+                  Resend API Key {emailConfig?.maskedApiKey && `(Current: ${emailConfig.maskedApiKey})`}
+                </label>
+                <input
+                  type="password"
+                  placeholder={
+                    emailConfig?.maskedApiKey || "Paste your Resend API key: re_..."
+                  }
+                  value={apiKeyInput}
+                  onChange={(e) => setApiKeyInput(e.target.value)}
+                  className="w-full rounded-lg border border-[#ccd1de] px-3 py-2 text-[13px] text-[#1e2330] focus:outline-none focus:border-[#1f2d5a] bg-white font-mono-code"
+                />
+                <p className="text-[11px] text-[#64748b] mt-1">
+                  Free key from{" "}
+                  <a
+                    href="https://resend.com"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[#1f2d5a] underline font-semibold"
+                  >
+                    resend.com
+                  </a>
+                  . You can also define <code className="bg-[#e2e8f0] px-1 py-0.5 rounded">RESEND_API_KEY</code> in Vercel.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-[12.5px] font-bold text-[#1f2d5a] mb-1">
+                  From / Sender Email
+                </label>
+                <input
+                  type="text"
+                  placeholder="CAP Task Board <onboarding@resend.dev>"
+                  value={fromEmailInput}
+                  onChange={(e) => setFromEmailInput(e.target.value)}
+                  className="w-full rounded-lg border border-[#ccd1de] px-3 py-2 text-[13px] text-[#1e2330] focus:outline-none focus:border-[#1f2d5a] bg-white"
+                />
+                <p className="text-[11px] text-[#64748b] mt-1">
+                  Keep <code className="bg-[#e2e8f0] px-1 py-0.5 rounded">onboarding@resend.dev</code> for testing, or use your verified domain address (e.g. <code className="bg-[#e2e8f0] px-1 py-0.5 rounded">CAP &lt;reminders@cap.direct&gt;</code>).
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-[#e2e8f0]">
+              <div className="text-[12px] text-[#475569]">
+                {emailConfig?.hasEnvKey ? (
+                  <span className="text-[#166534] font-medium">
+                    ✓ Environment variable <code className="bg-[#dcfce7] px-1 py-0.5 rounded">RESEND_API_KEY</code> detected.
+                  </span>
+                ) : (
+                  <span>
+                    No server environment key detected; saved key in database will be used.
+                  </span>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleSendTestEmail}
+                  disabled={testingEmail || !emailConfig?.isConfigured}
+                  className="px-3.5 py-1.5 rounded-lg border border-[#cbd5e1] hover:bg-[#f1f5f9] text-[#1f2d5a] text-[12.5px] font-bold cursor-pointer disabled:opacity-40 transition-colors"
+                >
+                  {testingEmail ? "Sending test..." : `Send Test Email to ${currentUser.email.split("@")[0]}`}
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingSettings}
+                  className="px-4 py-1.5 rounded-lg bg-[#1f2d5a] hover:bg-[#2a3a6e] text-white text-[12.5px] font-bold cursor-pointer disabled:opacity-50 transition-colors shadow-2xs"
+                >
+                  {savingSettings ? "Saving..." : "Save Email Settings"}
+                </button>
+              </div>
+            </div>
+          </form>
+        </div>
+      )}
 
       {/* Activity Log */}
       <div className="bg-white rounded-lg border border-[#dce1ec] shadow-xs overflow-hidden">

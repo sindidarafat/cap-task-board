@@ -140,13 +140,30 @@ export default function SendReminderDropdown({
         window.open(data.whatsappUrl, "_blank", "noopener,noreferrer");
       }
 
-      // Launch Email draft if selected
-      if (useEmail && data.mailtoUrl) {
-        window.location.href = data.mailtoUrl;
+      // Check Email delivery result
+      let emailStatusMsg = "";
+      if (useEmail) {
+        if (data.directEmailSent) {
+          emailStatusMsg = `Direct email successfully delivered to ${resolvedInfo.email} via Resend.`;
+        } else {
+          // If direct sending could not proceed (e.g. API key not set yet), open mailto draft
+          if (data.mailtoUrl) {
+            window.location.href = data.mailtoUrl;
+            emailStatusMsg = `Email draft opened in your mail app (${data.emailError || "Direct sending unavailable"}).`;
+          }
+        }
       }
 
-      const channelText = channels.map((c) => (c === "whatsapp" ? "WhatsApp" : "Email")).join(" & ");
-      onSuccess(`Reminder successfully prepared and dispatched to ${resolvedInfo.name} via ${channelText}!`);
+      let finalMsg = "";
+      if (useWhatsApp && useEmail) {
+        finalMsg = `Reminder sent! WhatsApp opened & ${emailStatusMsg || `Email dispatched to ${resolvedInfo.email}`}`;
+      } else if (useWhatsApp) {
+        finalMsg = `WhatsApp reminder opened for ${resolvedInfo.name} (${resolvedInfo.phone})!`;
+      } else {
+        finalMsg = emailStatusMsg || `Email reminder sent to ${resolvedInfo.name} (${resolvedInfo.email})!`;
+      }
+
+      onSuccess(finalMsg);
       setIsOpen(false);
       setTaskDetails("");
     } catch (err: unknown) {
@@ -250,7 +267,7 @@ export default function SendReminderDropdown({
                       <div className="flex items-center gap-1.5 font-bold text-[13px] text-[#1e40af]">
                         <span>✉️ 2- Email</span>
                         <span className="text-[10.5px] font-semibold bg-[#dbeafe] text-[#1d4ed8] px-1.5 py-0.2 rounded">
-                          Official
+                          Direct Send
                         </span>
                       </div>
                       <p className="text-[11.5px] text-[#374151] font-mono-code truncate">

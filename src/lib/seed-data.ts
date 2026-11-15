@@ -1220,5 +1220,9 @@ export function createInitialDatabase(): DatabaseSchema {
         category: "ADMIN_ROOM",
       },
     ],
+    settings: {
+      resendApiKey: "",
+      resendFromEmail: "CAP Task Board <onboarding@resend.dev>",
+    },
   };
 }

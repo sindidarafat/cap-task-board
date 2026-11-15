@@ -122,6 +122,11 @@ export interface ActivityLogEntry {
   category: "TASK" | "ADMIN_ROOM" | "CLIENT" | "TEAM";
 }
 
+export interface AppSettings {
+  resendApiKey?: string;
+  resendFromEmail?: string;
+}
+
 export interface DatabaseSchema {
   tasks: TaskRecord[];
   clients: ClientRecord[];
@@ -129,4 +134,5 @@ export interface DatabaseSchema {
   estimateBuffer: number; // e.g. 0.2 for 20%
   users: UserAccount[];
   activityLog: ActivityLogEntry[];
+  settings?: AppSettings;
 }

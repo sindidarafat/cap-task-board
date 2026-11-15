@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { appendActivity, getDb, saveDb } from "@/lib/db";
+import { sendPasswordResetEmail } from "@/lib/email";
 
 export async function POST(request: NextRequest) {
   try {
@@ -36,11 +37,21 @@ export async function POST(request: NextRequest) {
     user.passwordHash = passwordHash;
     user.passwordSet = false; // Indicates they should update it once signed in
 
+    // Dispatch email via Resend
+    const origin =
+      request.nextUrl.origin || "https://captaskboardamt.vercel.app";
+    const emailResult = await sendPasswordResetEmail({
+      to: user.email,
+      recipientName: user.name,
+      tempPassword,
+      siteUrl: origin,
+    });
+
     appendActivity(db, {
       actorName: user.name,
       actorEmail: user.email,
       action: "Issued Temporary Password",
-      details: `Generated temporary password for ${user.name} (${user.email}). User can sign in and update password on dashboard.`,
+      details: `Generated temporary password for ${user.name} (${user.email}). Email delivery: ${emailResult.success ? "Sent directly via Resend (" + emailResult.messageId + ")" : "Direct email failed (" + emailResult.error + ")"}. User can sign in and update password on dashboard.`,
       category: "ADMIN_ROOM",
     });
 
@@ -51,7 +62,11 @@ export async function POST(request: NextRequest) {
       email: user.email,
       name: user.name,
       tempPassword,
-      message: `A temporary password has been issued and sent to ${user.email}.`,
+      directEmailSent: emailResult.success,
+      emailError: emailResult.error || null,
+      message: emailResult.success
+        ? `A temporary password has been emailed to ${user.email}.`
+        : `A temporary password has been generated for ${user.email}.`,
     });
   } catch (err) {
     console.error("Reset password error:", err);

@@ -2528,6 +2528,7 @@ export default function TaskBoardApp() {
             team={team}
             memberIdMap={memberIdMap}
             activityLog={activityLog}
+            apiFetch={apiFetch}
             onRequestAdminAccess={handleRequestAdminAccess}
             onAdminAction={async (payload) => {
               const data = await apiFetch("/api/admin/users", {
