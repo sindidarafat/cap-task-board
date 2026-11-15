@@ -16,6 +16,7 @@ import {
   computeComingUp,
   computeTasks,
   computeTodayBoard,
+  getTodayDateStr,
 } from "@/lib/formulas";
 import {
   FlagBadge,
@@ -26,6 +27,7 @@ import {
   WorkTypeBadge,
 } from "./BadgeHelpers";
 import TaskFormModal from "./TaskFormModal";
+import ExportCsvModal from "./ExportCsvModal";
 import AdminRoomView from "./AdminRoomView";
 import StickyTable from "./StickyTable";
 import {
@@ -155,7 +157,7 @@ export default function TaskBoardApp() {
   const [users, setUsers] = useState<SafeUserAccount[]>([]);
   const [activityLog, setActivityLog] = useState<ActivityLogEntry[]>([]);
 
-  const [referenceDate, setReferenceDate] = useState<string>("2026-11-11");
+  const [referenceDate, setReferenceDate] = useState<string>("2026-11-15");
   const [activeTab, setActiveTab] = useState<ActiveTab>("today");
 
   // Auth form states
@@ -186,6 +188,7 @@ export default function TaskBoardApp() {
   const [myWorksSubTab, setMyWorksSubTab] = useState<"ongoing" | "review" | "done">("ongoing");
 
   const [showTaskModal, setShowTaskModal] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
   const [editingTask, setEditingTask] = useState<TaskRecord | null>(null);
   const [toast, setToast] = useState<string | null>(null);
 
@@ -254,6 +257,8 @@ export default function TaskBoardApp() {
   }, [apiFetch]);
 
   useEffect(() => {
+    // Set to today's present date on client load
+    setReferenceDate(getTodayDateStr());
     const saved =
       typeof window !== "undefined"
         ? window.localStorage.getItem("cap_session_token")
@@ -975,15 +980,17 @@ export default function TaskBoardApp() {
                 type="date"
                 value={referenceDate}
                 onChange={(e) => setReferenceDate(e.target.value)}
-                className="bg-transparent text-[#1f2d5a] font-mono-code font-semibold text-[12.5px] focus:outline-none"
+                className="bg-transparent text-[#1f2d5a] font-mono-code font-semibold text-[12.5px] focus:outline-none cursor-pointer"
+                title="Select a date to view that day's works"
               />
-              {referenceDate !== "2026-11-11" && (
+              {referenceDate !== getTodayDateStr() && (
                 <button
                   type="button"
-                  onClick={() => setReferenceDate("2026-11-11")}
-                  className="text-[11px] font-semibold text-[#e8792b] hover:underline ml-1 cursor-pointer"
+                  onClick={() => setReferenceDate(getTodayDateStr())}
+                  className="text-[11.5px] font-semibold text-[#e8792b] hover:underline ml-1 cursor-pointer"
+                  title="Return to today's present date"
                 >
-                  Reset
+                  Today
                 </button>
               )}
             </div>
@@ -1003,7 +1010,7 @@ export default function TaskBoardApp() {
 
             <button
               type="button"
-              onClick={handleExportCSV}
+              onClick={() => setShowExportModal(true)}
               className="px-3 py-1 rounded-lg border border-[#ccd1de] bg-white hover:border-[#1f2d5a] text-[#1f2d5a] text-[12.5px] font-semibold cursor-pointer transition-colors"
             >
               Export CSV
@@ -2211,6 +2218,25 @@ export default function TaskBoardApp() {
           onSave={handleSaveTask}
         />
       )}
+
+      {/* Export CSV Modal */}
+      <ExportCsvModal
+        isOpen={showExportModal}
+        onClose={() => setShowExportModal(false)}
+        referenceDate={referenceDate}
+        allTasks={computedTasks}
+        filteredTasks={filteredTasks}
+        todayTasks={todaySummary.rankedTasks}
+        myWorksTasks={[
+          ...myWorksData.ongoingOwned,
+          ...myWorksData.waitingMyReview,
+          ...myWorksData.completedOwned,
+        ]}
+        clients={computedClients}
+        team={team}
+        selectedMemberName={selectedMemberName}
+        onExportSuccess={(msg) => showToast(msg)}
+      />
     </div>
   );
 }
