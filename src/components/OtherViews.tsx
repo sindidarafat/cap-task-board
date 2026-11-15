@@ -6,11 +6,13 @@ import {
   ClientRecord,
   ComputedClient,
   ComputedTask,
+  SafeUserAccount,
   TeamMember,
 } from "@/lib/types";
 import { ComingUpSummary, computeScorecard } from "@/lib/formulas";
 import { MemberTag, PriorityBadge, StatusBadge, WorkTypeBadge } from "./BadgeHelpers";
 import StickyTable from "./StickyTable";
+import SendReminderDropdown from "./SendReminderDropdown";
 
 /* =========================================================
    1. COMING UP VIEW
@@ -19,13 +21,21 @@ export function ComingUpView({
   summary,
   estimateBuffer,
   team = [],
+  users = [],
   memberIdMap = {},
+  isAdmin = false,
+  apiFetch,
+  onSuccess,
   onSelectTask,
 }: {
   summary: ComingUpSummary;
   estimateBuffer: number;
   team?: TeamMember[];
+  users?: SafeUserAccount[];
   memberIdMap?: Record<string, string>;
+  isAdmin?: boolean;
+  apiFetch?: (url: string, options?: RequestInit) => Promise<any>;
+  onSuccess?: (message: string) => void;
   onSelectTask?: (task: ComputedTask) => void;
 }) {
   return (
@@ -78,7 +88,19 @@ export function ComingUpView({
                       className="even:bg-[#f8f9fc] hover:bg-[#eef1f8] transition-colors"
                     >
                       <td className="py-3 px-4 font-semibold text-[#1e2330]">
-                        <MemberTag name={row.person} idMap={memberIdMap} />
+                        <div className="flex items-center justify-between gap-2">
+                          <MemberTag name={row.person} idMap={memberIdMap} />
+                          {isAdmin && apiFetch && (
+                            <SendReminderDropdown
+                              memberName={row.person}
+                              team={team}
+                              users={users}
+                              isAdmin={isAdmin}
+                              apiFetch={apiFetch}
+                              onSuccess={onSuccess || (() => {})}
+                            />
+                          )}
+                        </div>
                       </td>
                       <td className="py-3 px-3 font-medium text-[#2d3446]">{row.team}</td>
                       <td className="py-3 px-3 text-center font-mono-code">
@@ -220,13 +242,21 @@ export function ComingUpView({
 export function ScorecardView({
   tasks,
   team,
+  users = [],
   referenceDate,
   memberIdMap = {},
+  isAdmin = false,
+  apiFetch,
+  onSuccess,
 }: {
   tasks: ComputedTask[];
   team: TeamMember[];
+  users?: SafeUserAccount[];
   referenceDate: string;
   memberIdMap?: Record<string, string>;
+  isAdmin?: boolean;
+  apiFetch?: (url: string, options?: RequestInit) => Promise<any>;
+  onSuccess?: (message: string) => void;
 }) {
   const [fromDate, setFromDate] = useState("2026-11-08");
   const [toDate, setToDate] = useState(referenceDate || "2026-11-11");
@@ -308,7 +338,19 @@ export function ScorecardView({
                   className="even:bg-[#f8f9fc] hover:bg-[#eef1f8] transition-colors"
                 >
                   <td className="py-3 px-4 font-semibold text-[#1e2330]">
-                    <MemberTag name={r.person} idMap={memberIdMap} />
+                    <div className="flex items-center justify-between gap-2">
+                      <MemberTag name={r.person} idMap={memberIdMap} />
+                      {isAdmin && apiFetch && (
+                        <SendReminderDropdown
+                          memberName={r.person}
+                          team={team}
+                          users={users}
+                          isAdmin={isAdmin}
+                          apiFetch={apiFetch}
+                          onSuccess={onSuccess || (() => {})}
+                        />
+                      )}
+                    </div>
                   </td>
                   <td className="py-3 px-3 font-medium text-[#2d3446]">{r.team}</td>
                   <td className="py-3 px-3 text-center font-mono-code font-bold text-[#1f2d5a]">
@@ -677,16 +719,22 @@ export function ClientsPitchesView({
    ========================================================= */
 export function TeamView({
   team,
+  users = [],
   estimateBuffer,
   isAdmin,
+  apiFetch,
+  onSuccess,
   onAddMember,
   onUpdateMember,
   onDeleteMember,
   onUpdateBuffer,
 }: {
   team: TeamMember[];
+  users?: SafeUserAccount[];
   estimateBuffer: number;
   isAdmin: boolean;
+  apiFetch?: (url: string, options?: RequestInit) => Promise<any>;
+  onSuccess?: (message: string) => void;
   onAddMember: (m: Partial<TeamMember>) => Promise<void>;
   onUpdateMember: (m: TeamMember) => Promise<void>;
   onDeleteMember: (id: string) => Promise<void>;
@@ -832,7 +880,23 @@ export function TeamView({
                           className="border border-[#ccd1de] rounded px-2 py-1 text-[13px]"
                         />
                       ) : (
-                        m.name
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="font-semibold text-[#1e2330]">{m.name}</span>
+                          {isAdmin && apiFetch && (
+                            <SendReminderDropdown
+                              member={m}
+                              memberName={m.name}
+                              memberRole={m.role}
+                              memberPhone={m.phone}
+                              memberEmail={m.email}
+                              team={team}
+                              users={users}
+                              isAdmin={isAdmin}
+                              apiFetch={apiFetch}
+                              onSuccess={onSuccess || (() => {})}
+                            />
+                          )}
+                        </div>
                       )}
                     </td>
                     <td className="py-3 px-3 font-medium text-[#2d3446]">
