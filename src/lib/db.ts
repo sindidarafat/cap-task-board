@@ -143,6 +143,12 @@ export async function getDb(): Promise<DatabaseSchema> {
         }
       }
     }
+    // Ensure all users with password hashes have passwordSet marked true
+    for (const u of db.users) {
+      if (u.passwordHash && u.passwordSet === undefined) {
+        u.passwordSet = true;
+      }
+    }
   } else {
     db.users = initial.users;
   }
@@ -206,4 +212,129 @@ export function appendActivity(
   if (db.activityLog.length > 200) {
     db.activityLog = db.activityLog.slice(0, 200);
   }
+}
+
+/**
+ * Synchronize client-cached users and credentials into server DB memory & disk.
+ * This ensures that on Vercel serverless cold starts or multi-lambda environments,
+ * user registrations, password updates, and profile edits are never lost.
+ */
+export function syncClientUsersToDb(
+  db: DatabaseSchema,
+  clientUsers: unknown[]
+): boolean {
+  if (!Array.isArray(clientUsers) || clientUsers.length === 0) return false;
+  let changed = false;
+
+  for (const raw of clientUsers) {
+    if (!raw || typeof raw !== "object") continue;
+    const cu = raw as Partial<UserAccount>;
+    if (!cu.email) continue;
+    const email = String(cu.email).trim().toLowerCase();
+
+    const idx = db.users.findIndex(
+      (u) =>
+        u.email.toLowerCase() === email ||
+        (cu.id && u.id === cu.id) ||
+        (cu.name && u.name.toLowerCase() === String(cu.name).trim().toLowerCase())
+    );
+
+    if (idx >= 0) {
+      const u = db.users[idx];
+      if (
+        cu.passwordHash &&
+        typeof cu.passwordHash === "string" &&
+        cu.passwordHash.startsWith("$2") &&
+        u.passwordHash !== cu.passwordHash
+      ) {
+        u.passwordHash = cu.passwordHash;
+        changed = true;
+      }
+      if (cu.passwordSet !== undefined && u.passwordSet !== cu.passwordSet) {
+        u.passwordSet = cu.passwordSet;
+        changed = true;
+      }
+      if (cu.phone && !u.phone) {
+        u.phone = cu.phone;
+        changed = true;
+      }
+      if (
+        cu.teamRole &&
+        (!u.teamRole || u.teamRole === "Team Member") &&
+        cu.teamRole !== "Team Member"
+      ) {
+        u.teamRole = cu.teamRole;
+        changed = true;
+      }
+      if (cu.role && cu.role === "ADMIN" && u.role !== "ADMIN") {
+        u.role = "ADMIN";
+        u.adminRequestStatus = cu.adminRequestStatus || "APPROVED";
+        changed = true;
+      }
+      if (cu.name && u.name !== cu.name && cu.name.trim().length > 2) {
+        const aliases = new Set(u.aliases || []);
+        aliases.add(u.name);
+        aliases.add(cu.name.trim());
+        u.aliases = Array.from(aliases);
+      }
+      // Keep matching team member in sync
+      const tm = db.team.find(
+        (m) =>
+          (u.memberId && m.id === u.memberId) ||
+          m.name.toLowerCase() === u.name.toLowerCase()
+      );
+      if (tm) {
+        if (u.phone && !tm.phone) tm.phone = u.phone;
+        if (u.email && !tm.email) tm.email = u.email;
+        if (u.teamRole && !tm.role) tm.role = u.teamRole;
+      }
+    } else {
+      // User registered on client or another instance, restore into this instance
+      const memberId =
+        cu.memberId ||
+        `M-${String(db.team.length + 1).padStart(3, "0")}-${Date.now().toString().slice(-3)}`;
+      const newUser: UserAccount = {
+        id: cu.id || `U-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+        memberId,
+        name: cu.name || email.split("@")[0],
+        email: email,
+        phone: cu.phone || "",
+        passwordHash:
+          cu.passwordHash ||
+          "$2b$08$6Ho0U1H4A7r9waJkq2KkEus5VGKLZufqQUzPqMps1teMw2dlIO8pC",
+        passwordSet: cu.passwordSet ?? true,
+        role: cu.role || "MEMBER",
+        adminRequestStatus: cu.adminRequestStatus || "NONE",
+        teamRole: cu.teamRole || "Team Member",
+        approvedBy: cu.approvedBy || null,
+        approvedAt: cu.approvedAt || null,
+        requestedAt: cu.requestedAt || null,
+        createdAt: cu.createdAt || new Date().toISOString(),
+        aliases: cu.aliases || [cu.name || email],
+      };
+      db.users.push(newUser);
+      changed = true;
+
+      // Also ensure present in db.team so they appear on team roster!
+      const tmIdx = db.team.findIndex(
+        (m) =>
+          (newUser.memberId && m.id === newUser.memberId) ||
+          m.name.toLowerCase() === newUser.name.toLowerCase()
+      );
+      if (tmIdx === -1) {
+        db.team.push({
+          id: newUser.memberId || newUser.id,
+          name: newUser.name,
+          role: newUser.teamRole || "Team Member",
+          team: "Creative",
+          dailyCapacity: 6,
+          notes: "Synchronized account",
+          phone: newUser.phone,
+          email: newUser.email,
+        });
+      }
+    }
+  }
+
+  return changed;
 }

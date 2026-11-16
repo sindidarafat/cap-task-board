@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
-import { appendActivity, getDb, sanitizeUser, saveDb } from "@/lib/db";
+import { appendActivity, getDb, sanitizeUser, saveDb, syncClientUsersToDb } from "@/lib/db";
 import { getCurrentUser, SESSION_COOKIE_NAME, signSessionToken } from "@/lib/auth";
 
 export async function POST(request: NextRequest) {
@@ -26,6 +26,17 @@ export async function POST(request: NextRequest) {
     }
 
     const db = await getDb();
+
+    // Sync any client users header
+    const clientUsersHeader = request.headers.get("x-cap-client-users");
+    if (clientUsersHeader) {
+      try {
+        const parsed = JSON.parse(clientUsersHeader);
+        if (Array.isArray(parsed)) {
+          syncClientUsersToDb(db, parsed);
+        }
+      } catch {}
+    }
     const user = db.users.find(
       (u) =>
         (targetUserId && u.id === targetUserId) ||

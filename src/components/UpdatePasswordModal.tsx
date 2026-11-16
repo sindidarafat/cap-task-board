@@ -10,6 +10,7 @@ interface UpdatePasswordModalProps {
   apiFetch: (url: string, options?: RequestInit) => Promise<any>;
   onSuccess: (message: string) => void;
   saveLocalPasswordHash: (email: string, hash: string) => void;
+  saveLocalUserRecord?: (userRecord: Record<string, unknown>) => void;
 }
 
 export default function UpdatePasswordModal({
@@ -19,6 +20,7 @@ export default function UpdatePasswordModal({
   apiFetch,
   onSuccess,
   saveLocalPasswordHash,
+  saveLocalUserRecord,
 }: UpdatePasswordModalProps) {
   const [newPassword, setNewPassword] = useState("");
   const [retypePassword, setRetypePassword] = useState("");
@@ -54,6 +56,10 @@ export default function UpdatePasswordModal({
 
       if (data.passwordHash && currentUser.email) {
         saveLocalPasswordHash(currentUser.email, data.passwordHash);
+      }
+
+      if (saveLocalUserRecord && data.userRecord) {
+        saveLocalUserRecord(data.userRecord);
       }
 
       onSuccess("Password updated successfully! Your new password has been saved.");

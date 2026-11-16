@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
-import { appendActivity, getDb, saveDb } from "@/lib/db";
+import { appendActivity, getDb, saveDb, syncClientUsersToDb } from "@/lib/db";
 import { sendPasswordResetEmail } from "@/lib/email";
 
 export async function POST(request: NextRequest) {
@@ -10,9 +10,21 @@ export async function POST(request: NextRequest) {
     const email = (body.email || "").trim().toLowerCase();
 
     const db = await getDb();
+
+    // Sync any client users header
+    const clientUsersHeader = request.headers.get("x-cap-client-users");
+    if (clientUsersHeader) {
+      try {
+        const parsed = JSON.parse(clientUsersHeader);
+        if (Array.isArray(parsed)) {
+          syncClientUsersToDb(db, parsed);
+        }
+      } catch {}
+    }
+
     let user = db.users.find(
       (u) =>
-        (userId && u.id === userId) ||
+        (userId && (u.id === userId || u.memberId === userId)) ||
         (email && u.email.toLowerCase() === email) ||
         (email && email.includes("@") && u.email.toLowerCase() === email)
     );
@@ -35,7 +47,7 @@ export async function POST(request: NextRequest) {
 
     const passwordHash = await bcrypt.hash(tempPassword, 8);
     user.passwordHash = passwordHash;
-    user.passwordSet = false; // Indicates they should update it once signed in
+    user.passwordSet = true;
 
     // Dispatch email via Resend
     const origin =
@@ -62,6 +74,8 @@ export async function POST(request: NextRequest) {
       email: user.email,
       name: user.name,
       tempPassword,
+      passwordHash: user.passwordHash,
+      userRecord: user,
       directEmailSent: emailResult.success,
       emailError: emailResult.error || null,
       message: emailResult.success

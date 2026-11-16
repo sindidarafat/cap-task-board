@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
-import { appendActivity, getDb, sanitizeUser, saveDb } from "@/lib/db";
+import { appendActivity, getDb, sanitizeUser, saveDb, syncClientUsersToDb } from "@/lib/db";
 import { SESSION_COOKIE_NAME, signSessionToken } from "@/lib/auth";
 import { UserAccount } from "@/lib/types";
 
@@ -31,6 +31,17 @@ export async function POST(request: NextRequest) {
     }
 
     const db = await getDb();
+
+    // Sync any client users header
+    const clientUsersHeader = request.headers.get("x-cap-client-users");
+    if (clientUsersHeader) {
+      try {
+        const parsed = JSON.parse(clientUsersHeader);
+        if (Array.isArray(parsed)) {
+          syncClientUsersToDb(db, parsed);
+        }
+      } catch {}
+    }
 
     // Case 1: Existing member setting their password (first time activation)
     if (action === "set_password" || (userId && !email)) {

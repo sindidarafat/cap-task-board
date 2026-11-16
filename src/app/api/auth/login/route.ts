@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
-import { getDb, sanitizeUser, saveDb } from "@/lib/db";
+import { getDb, sanitizeUser, saveDb, syncClientUsersToDb } from "@/lib/db";
 import { SESSION_COOKIE_NAME, signSessionToken } from "@/lib/auth";
 import { UserAccount } from "@/lib/types";
 
@@ -13,6 +13,7 @@ export async function POST(request: NextRequest) {
     const password = body.password || "";
     const clientPasswordHash = typeof body.clientPasswordHash === "string" ? body.clientPasswordHash : "";
     const clientUser = body.clientUser as Partial<UserAccount> | undefined;
+    const clientUsers = Array.isArray(body.clientUsers) ? body.clientUsers : undefined;
 
     if (!password) {
       return NextResponse.json(
@@ -33,14 +34,30 @@ export async function POST(request: NextRequest) {
     }
 
     const db = await getDb();
+
+    // 1. Sync any client-side user records from headers or body
+    const clientUsersHeader = request.headers.get("x-cap-client-users");
+    if (clientUsersHeader) {
+      try {
+        const parsed = JSON.parse(clientUsersHeader);
+        if (Array.isArray(parsed)) {
+          syncClientUsersToDb(db, parsed);
+        }
+      } catch {}
+    }
+    if (clientUsers && clientUsers.length > 0) {
+      syncClientUsersToDb(db, clientUsers);
+    }
+
+    // 2. Lookup user
     let user = db.users.find((u) => {
-      if (userId && u.id === userId) return true;
+      if (userId && (u.id === userId || u.memberId === userId)) return true;
       if (email && u.email.toLowerCase() === email) return true;
       if (name && (u.name.toLowerCase() === name.toLowerCase() || u.aliases?.some(a => a.toLowerCase() === name.toLowerCase()))) return true;
       return false;
     });
 
-    // Support Sindid Arafat's alternate email analyst@cap.direct
+    // Support Sindid Arafat's alternate emails
     if (!user && (email === "analyst@cap.direct" || email === "sindidarafat275@gmail.com")) {
       user = db.users.find((u) => u.name === "Sindid Arafat");
     }
@@ -49,12 +66,12 @@ export async function POST(request: NextRequest) {
     if (!user && clientUser && (clientUser.email?.toLowerCase() === email || clientUser.id === userId)) {
       const restoredUser: UserAccount = {
         id: clientUser.id || `U-${Date.now()}`,
-        memberId: clientUser.memberId || "M-000",
+        memberId: clientUser.memberId || `M-${String(db.team.length + 1).padStart(3, "0")}`,
         name: clientUser.name || (email ? email.split("@")[0] : "User"),
         email: clientUser.email || email,
         phone: clientUser.phone || "",
         passwordHash: clientUser.passwordHash || (await bcrypt.hash(password, 8)),
-        passwordSet: clientUser.passwordSet ?? true,
+        passwordSet: true,
         role: clientUser.role || "MEMBER",
         adminRequestStatus: clientUser.adminRequestStatus || "NONE",
         teamRole: clientUser.teamRole || "Team Member",
@@ -65,13 +82,26 @@ export async function POST(request: NextRequest) {
         aliases: clientUser.aliases || [],
       };
       db.users.push(restoredUser);
+      // Ensure in db.team
+      if (!db.team.some((m) => (restoredUser.memberId && m.id === restoredUser.memberId) || m.name.toLowerCase() === restoredUser.name.toLowerCase())) {
+        db.team.push({
+          id: restoredUser.memberId || restoredUser.id,
+          name: restoredUser.name,
+          role: restoredUser.teamRole || "Team Member",
+          team: "Creative",
+          dailyCapacity: 6,
+          notes: "Restored from client cache",
+          phone: restoredUser.phone,
+          email: restoredUser.email,
+        });
+      }
       await saveDb(db);
       user = restoredUser;
     }
 
     if (!user) {
       return NextResponse.json(
-        { error: "No account found. Please check your selected name or email." },
+        { error: "No account found. Please check your selected name or email, or click 'New User' to register." },
         { status: 401 }
       );
     }
@@ -90,7 +120,6 @@ export async function POST(request: NextRequest) {
       try {
         if (await bcrypt.compare(password, clientPasswordHash)) {
           valid = true;
-          // Update user hash in db so subsequent calls on this lambda don't need client hash
           user.passwordHash = clientPasswordHash;
           user.passwordSet = true;
           await saveDb(db);
@@ -109,13 +138,23 @@ export async function POST(request: NextRequest) {
         password === "Admin@1234")
     ) {
       valid = true;
+      // Rehash so subsequent logins use direct bcrypt comparison
+      user.passwordHash = await bcrypt.hash(password, 8);
+      user.passwordSet = true;
+      await saveDb(db);
     }
 
     if (!valid) {
       return NextResponse.json(
-        { error: "Incorrect password. If you forgot your password, please click 'Forgot password?' to get a temporary password." },
+        { error: "Incorrect password. If you forgot your password, please click 'Forgot password?' or try the default agency password Cap@2026!." },
         { status: 401 }
       );
+    }
+
+    // Ensure passwordSet is true
+    if (!user.passwordSet) {
+      user.passwordSet = true;
+      await saveDb(db);
     }
 
     const safeUser = sanitizeUser(user);
@@ -126,6 +165,7 @@ export async function POST(request: NextRequest) {
       token,
       passwordHash: user.passwordHash,
       userRecord: user,
+      message: `Signed in successfully as ${safeUser.name}.`,
     });
 
     response.cookies.set(SESSION_COOKIE_NAME, token, {

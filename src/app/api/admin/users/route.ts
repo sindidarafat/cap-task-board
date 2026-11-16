@@ -168,6 +168,8 @@ export async function POST(request: NextRequest) {
         team: "Creative",
         dailyCapacity: 6,
         notes: "Created from Admin Room",
+        phone: (body.phone || "").trim(),
+        email,
       });
     }
 
@@ -176,7 +178,9 @@ export async function POST(request: NextRequest) {
       memberId,
       name: finalName,
       email,
+      phone: (body.phone || "").trim(),
       passwordHash,
+      passwordSet: true,
       role,
       adminRequestStatus: role === "ADMIN" ? "APPROVED" : "NONE",
       teamRole: finalTeamRole,
@@ -184,6 +188,7 @@ export async function POST(request: NextRequest) {
       approvedAt: role === "ADMIN" ? now : null,
       requestedAt: role === "ADMIN" ? now : null,
       createdAt: now,
+      aliases: [finalName],
     };
 
     db.users.push(newUser);

@@ -39,6 +39,7 @@ export async function POST(request: NextRequest) {
   const response = NextResponse.json({
     user: safeUser,
     token,
+    userRecord,
     message: "Your request for Admin access has been sent to the Admin Room for approval.",
   });
 

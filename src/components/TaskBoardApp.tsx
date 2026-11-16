@@ -146,11 +146,25 @@ function getLocalPasswordHash(email: string): string | undefined {
 
 function saveLocalPasswordHash(email: string, hash: string): void {
   if (typeof window === "undefined" || !email || !hash) return;
+  const cleanEmail = email.trim().toLowerCase();
   try {
     const raw = window.localStorage.getItem("cap_user_hashes");
     const map = raw ? JSON.parse(raw) : {};
-    map[email.toLowerCase()] = hash;
+    map[cleanEmail] = hash;
     window.localStorage.setItem("cap_user_hashes", JSON.stringify(map));
+
+    // Also update any matching record in cap_local_users
+    const rawUsers = window.localStorage.getItem("cap_local_users");
+    if (rawUsers) {
+      const list: Record<string, unknown>[] = JSON.parse(rawUsers);
+      const idx = list.findIndex(
+        (u) => String(u.email || "").toLowerCase() === cleanEmail
+      );
+      if (idx >= 0) {
+        list[idx] = { ...list[idx], passwordHash: hash, passwordSet: true };
+        window.localStorage.setItem("cap_local_users", JSON.stringify(list));
+      }
+    }
   } catch {}
 }
 
@@ -166,20 +180,29 @@ function getLocalUserRecords(): Record<string, unknown>[] {
 
 function saveLocalUserRecord(userRecord: Record<string, unknown>): void {
   if (typeof window === "undefined" || !userRecord || !userRecord.email) return;
+  const cleanEmail = String(userRecord.email).trim().toLowerCase();
   try {
     const raw = window.localStorage.getItem("cap_local_users");
     const list: Record<string, unknown>[] = raw ? JSON.parse(raw) : [];
     const idx = list.findIndex(
       (u) =>
-        String(u.email || "").toLowerCase() ===
-        String(userRecord.email || "").toLowerCase()
+        String(u.email || "").toLowerCase() === cleanEmail ||
+        (userRecord.id && String(u.id || "") === String(userRecord.id))
     );
     if (idx >= 0) {
-      list[idx] = { ...list[idx], ...userRecord };
+      list[idx] = { ...list[idx], ...userRecord, email: cleanEmail };
     } else {
-      list.push(userRecord);
+      list.push({ ...userRecord, email: cleanEmail });
     }
     window.localStorage.setItem("cap_local_users", JSON.stringify(list));
+
+    // If a password hash is present in the record, keep cap_user_hashes synchronized
+    if (userRecord.passwordHash && typeof userRecord.passwordHash === "string") {
+      const rawHashes = window.localStorage.getItem("cap_user_hashes");
+      const map = rawHashes ? JSON.parse(rawHashes) : {};
+      map[cleanEmail] = userRecord.passwordHash;
+      window.localStorage.setItem("cap_user_hashes", JSON.stringify(map));
+    }
   } catch {}
 }
 
@@ -214,6 +237,8 @@ export default function TaskBoardApp() {
 
   // Auth redesign states: 2 options (1- existing user, 2- new user)
   const [authOption, setAuthOption] = useState<"existing" | "new">("existing");
+  const [authSubMode, setAuthSubMode] = useState<"login" | "set_password">("login");
+  const [authLoginMethod, setAuthLoginMethod] = useState<"roster" | "email">("roster");
   const [selectedExistingMemberId, setSelectedExistingMemberId] = useState<string>("M-013"); // Sindid Arafat by default
   const [authEmail, setAuthEmail] = useState<string>(() => {
     if (typeof window !== "undefined") {
@@ -312,6 +337,20 @@ export default function TaskBoardApp() {
       );
       setUsers(data.users || []);
       setActivityLog(data.activityLog || []);
+
+      // Cache all users & team in localStorage so offline or serverless cold starts never lose records
+      if (typeof window !== "undefined") {
+        if (Array.isArray(data.users)) {
+          for (const u of data.users) {
+            saveLocalUserRecord(u);
+          }
+        }
+        if (Array.isArray(data.team)) {
+          try {
+            window.localStorage.setItem("cap_cached_team", JSON.stringify(data.team));
+          } catch {}
+        }
+      }
     } catch (err) {
       console.error("Error loading board:", err);
     } finally {
@@ -342,6 +381,68 @@ export default function TaskBoardApp() {
     () => users.filter((u) => u.adminRequestStatus === "PENDING").length,
     [users]
   );
+
+  const allRosterMembers = useMemo<OfficialMemberItem[]>(() => {
+    const map = new Map<string, OfficialMemberItem>();
+    // 1. Official seed roster
+    for (const m of OFFICIAL_TEAM_ROSTER) {
+      map.set(m.id, { ...m });
+    }
+    // 2. Any additional team members in team
+    for (const tm of team) {
+      if (!map.has(tm.id)) {
+        map.set(tm.id, {
+          id: tm.id,
+          name: tm.name,
+          email: tm.email || `${tm.name.toLowerCase().replace(/[^a-z0-9]/g, ".")}@cap.direct`,
+          phone: tm.phone || "",
+          role: "MEMBER",
+          title: tm.role || "Team Member",
+          aliases: tm.aliases || [tm.name],
+        });
+      }
+    }
+    // 3. Any additional registered users in users
+    for (const u of users) {
+      const key = u.memberId || u.id;
+      if (!map.has(key)) {
+        map.set(key, {
+          id: key,
+          name: u.name,
+          email: u.email,
+          phone: u.phone || "",
+          role: u.role,
+          title: u.teamRole || "Team Member",
+          aliases: u.aliases || [u.name],
+        });
+      }
+    }
+    // 4. Any locally cached users from getLocalUserRecords()
+    const local = getLocalUserRecords();
+    for (const lu of local) {
+      const email = String(lu.email || "").trim().toLowerCase();
+      if (email) {
+        const exists = Array.from(map.values()).some(
+          (m) => m.email.toLowerCase() === email
+        );
+        if (!exists) {
+          const id = String(lu.memberId || lu.id || `M-LOCAL-${email}`);
+          map.set(id, {
+            id,
+            name: String(lu.name || email.split("@")[0]),
+            email: email,
+            phone: String(lu.phone || ""),
+            role: lu.role === "ADMIN" ? "ADMIN" : "MEMBER",
+            title: String(lu.teamRole || "Team Member"),
+            aliases: Array.isArray(lu.aliases)
+              ? (lu.aliases as string[])
+              : [String(lu.name || email)],
+          });
+        }
+      }
+    }
+    return Array.from(map.values());
+  }, [team, users]);
 
   const computedTasks = useMemo(
     () => computeTasks(tasks, clients, team, referenceDate),
@@ -459,8 +560,22 @@ export default function TaskBoardApp() {
      AUTHENTICATION HANDLERS
      ========================================================= */
   const handleLogin = async (emailInput?: string, passwordInput?: string) => {
-    const emailToUse = (emailInput ?? authEmail).trim().toLowerCase();
+    const targetOfficial =
+      allRosterMembers.find((m) => m.id === selectedExistingMemberId) ||
+      allRosterMembers[0];
+    const emailToUse = (
+      emailInput ??
+      (authLoginMethod === "email" ? authEmail : targetOfficial?.email || authEmail)
+    )
+      .trim()
+      .toLowerCase();
     const passwordToUse = passwordInput ?? authPassword;
+
+    if (!passwordToUse) {
+      setAuthError("Please enter your password.");
+      return;
+    }
+
     setAuthError("");
     setAuthBusy(true);
     try {
@@ -473,10 +588,12 @@ export default function TaskBoardApp() {
       const data = await apiFetch("/api/auth/login", {
         method: "POST",
         body: JSON.stringify({
+          userId: targetOfficial?.id,
           email: emailToUse,
           password: passwordToUse,
           clientPasswordHash,
           clientUser,
+          clientUsers: localUsers,
         }),
       });
 
@@ -496,6 +613,7 @@ export default function TaskBoardApp() {
         saveLocalUserRecord(data.userRecord);
       }
       await fetchBoard();
+      showToast(data.message || `Signed in successfully! Welcome, ${data.user?.name || "Team Member"}.`);
     } catch (err: unknown) {
       setAuthError(err instanceof Error ? err.message : "Sign in failed.");
     } finally {
@@ -506,9 +624,10 @@ export default function TaskBoardApp() {
   const handleExistingMemberSetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setAuthError("");
-    const selectedOfficial =
-      OFFICIAL_TEAM_ROSTER.find((m) => m.id === selectedExistingMemberId) ||
-      OFFICIAL_TEAM_ROSTER[0];
+    const targetMember =
+      allRosterMembers.find((m) => m.id === selectedExistingMemberId) ||
+      allRosterMembers.find((m) => m.email.toLowerCase() === authEmail.trim().toLowerCase()) ||
+      allRosterMembers[0];
 
     if (!authPassword || authPassword.length < 4) {
       setAuthError("Password must be at least 4 characters.");
@@ -521,15 +640,17 @@ export default function TaskBoardApp() {
 
     setAuthBusy(true);
     try {
+      const localUsers = getLocalUserRecords();
       const data = await apiFetch("/api/auth/register", {
         method: "POST",
         body: JSON.stringify({
           action: "set_password",
-          memberId: selectedOfficial.id,
-          name: selectedOfficial.name,
-          email: selectedOfficial.email,
-          phone: selectedOfficial.phone,
+          memberId: targetMember.id,
+          name: targetMember.name,
+          email: targetMember.email,
+          phone: targetMember.phone,
           password: authPassword,
+          clientUsers: localUsers,
         }),
       });
 
@@ -541,15 +662,15 @@ export default function TaskBoardApp() {
         setCurrentUser(data.user);
         window.localStorage.setItem("cap_current_user", JSON.stringify(data.user));
       }
-      window.localStorage.setItem("cap_saved_email", selectedOfficial.email);
+      window.localStorage.setItem("cap_saved_email", targetMember.email);
       if (data.passwordHash) {
-        saveLocalPasswordHash(selectedOfficial.email, data.passwordHash);
+        saveLocalPasswordHash(targetMember.email, data.passwordHash);
       }
       if (data.userRecord) {
         saveLocalUserRecord(data.userRecord);
       }
       await fetchBoard();
-      showToast(data.message || `Password set successfully! Welcome, ${selectedOfficial.name}.`);
+      showToast(data.message || `Password set successfully! Welcome, ${targetMember.name}.`);
     } catch (err: unknown) {
       setAuthError(err instanceof Error ? err.message : "Failed to set password.");
     } finally {
@@ -559,17 +680,18 @@ export default function TaskBoardApp() {
 
   const handleForgotPassword = async () => {
     setAuthError("");
-    const selectedOfficial =
-      OFFICIAL_TEAM_ROSTER.find((m) => m.id === selectedExistingMemberId) ||
-      OFFICIAL_TEAM_ROSTER[0];
+    const targetMember =
+      allRosterMembers.find((m) => m.id === selectedExistingMemberId) ||
+      allRosterMembers.find((m) => m.email.toLowerCase() === authEmail.trim().toLowerCase()) ||
+      allRosterMembers[0];
 
     setAuthBusy(true);
     try {
       const data = await apiFetch("/api/auth/reset-password", {
         method: "POST",
         body: JSON.stringify({
-          userId: selectedOfficial.id,
-          email: selectedOfficial.email,
+          userId: targetMember.id,
+          email: targetMember.email,
         }),
       });
 
@@ -581,6 +703,14 @@ export default function TaskBoardApp() {
 
       if (data.tempPassword) {
         setAuthPassword(data.tempPassword);
+        setAuthSubMode("login");
+      }
+
+      if (data.passwordHash && data.email) {
+        saveLocalPasswordHash(data.email, data.passwordHash);
+      }
+      if (data.userRecord) {
+        saveLocalUserRecord(data.userRecord);
       }
 
       showToast(`Temporary password generated for ${data.name}!`);
@@ -618,6 +748,7 @@ export default function TaskBoardApp() {
 
     setAuthBusy(true);
     try {
+      const localUsers = getLocalUserRecords();
       const data = await apiFetch("/api/auth/register", {
         method: "POST",
         body: JSON.stringify({
@@ -628,6 +759,7 @@ export default function TaskBoardApp() {
           teamRole: authTeamRole.trim() || (authAccountType === "ADMIN" ? "Admin" : "Team Member"),
           accountType: authAccountType,
           password: authPassword,
+          clientUsers: localUsers,
         }),
       });
 
@@ -836,18 +968,20 @@ export default function TaskBoardApp() {
 
   if (!currentUser) {
     const selectedOfficial =
-      OFFICIAL_TEAM_ROSTER.find((m) => m.id === selectedExistingMemberId) ||
-      OFFICIAL_TEAM_ROSTER[0];
-
-    const matchedUser = users.find(
-      (u) =>
-        u.id === selectedOfficial.id ||
-        u.memberId === selectedOfficial.id ||
-        u.email.toLowerCase() === selectedOfficial.email.toLowerCase() ||
-        u.name.toLowerCase() === selectedOfficial.name.toLowerCase()
-    );
-
-    const isPasswordSet = Boolean(matchedUser ? matchedUser.passwordSet : false);
+      (authLoginMethod === "email" && authEmail.trim())
+        ? (allRosterMembers.find(
+            (m) => m.email.toLowerCase() === authEmail.trim().toLowerCase()
+          ) || {
+            id: "custom-user",
+            name: authEmail.split("@")[0] || "Team Member",
+            email: authEmail.trim(),
+            phone: "",
+            role: "MEMBER" as const,
+            title: "Team Member",
+            aliases: [],
+          })
+        : (allRosterMembers.find((m) => m.id === selectedExistingMemberId) ||
+           allRosterMembers[0]);
 
     return (
       <div className="min-h-screen bg-[#f4f5f9] text-[#1e2330] flex flex-col justify-center py-10 px-4">
@@ -956,26 +1090,69 @@ export default function TaskBoardApp() {
             {authOption === "existing" ? (
               <div className="space-y-4">
                 <div>
-                  <label className="block text-[13px] font-semibold text-[#1f2d5a] mb-1">
-                    Select your identity from team roster
-                  </label>
-                  <select
-                    value={selectedExistingMemberId}
-                    onChange={(e) => {
-                      setSelectedExistingMemberId(e.target.value);
-                      setAuthError("");
-                      setResetSuccessInfo(null);
-                      setAuthPassword("");
-                      setAuthRetypePassword("");
-                    }}
-                    className="w-full rounded-lg border border-[#ccd1de] px-3 py-2 text-[13.5px] font-medium text-[#1e2330] focus:outline-none focus:border-[#1f2d5a] bg-white cursor-pointer"
-                  >
-                    {OFFICIAL_TEAM_ROSTER.map((m) => (
-                      <option key={m.id} value={m.id}>
-                        {m.name} — {m.title} ({m.role === "ADMIN" ? "Admin" : "Member"})
-                      </option>
-                    ))}
-                  </select>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-[13px] font-semibold text-[#1f2d5a]">
+                      Select your identity
+                    </label>
+                    <div className="flex items-center gap-1.5 text-[11.5px]">
+                      <button
+                        type="button"
+                        onClick={() => setAuthLoginMethod("roster")}
+                        className={`font-semibold cursor-pointer ${
+                          authLoginMethod === "roster"
+                            ? "text-[#1f2d5a] underline"
+                            : "text-[#525b70] hover:text-[#1f2d5a]"
+                        }`}
+                      >
+                        Choose from roster
+                      </button>
+                      <span className="text-[#ccd1de]">|</span>
+                      <button
+                        type="button"
+                        onClick={() => setAuthLoginMethod("email")}
+                        className={`font-semibold cursor-pointer ${
+                          authLoginMethod === "email"
+                            ? "text-[#1f2d5a] underline"
+                            : "text-[#525b70] hover:text-[#1f2d5a]"
+                        }`}
+                      >
+                        Type email
+                      </button>
+                    </div>
+                  </div>
+
+                  {authLoginMethod === "roster" ? (
+                    <select
+                      value={selectedExistingMemberId}
+                      onChange={(e) => {
+                        setSelectedExistingMemberId(e.target.value);
+                        setAuthError("");
+                        setResetSuccessInfo(null);
+                        setAuthPassword("");
+                        setAuthRetypePassword("");
+                      }}
+                      className="w-full rounded-lg border border-[#ccd1de] px-3 py-2 text-[13.5px] font-medium text-[#1e2330] focus:outline-none focus:border-[#1f2d5a] bg-white cursor-pointer"
+                    >
+                      {allRosterMembers.map((m) => (
+                        <option key={m.id} value={m.id}>
+                          {m.name} — {m.title} ({m.role === "ADMIN" ? "Admin" : "Member"})
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      type="email"
+                      required
+                      placeholder="e.g. sindidarafat275@gmail.com or md@cap.direct"
+                      value={authEmail}
+                      onChange={(e) => {
+                        setAuthEmail(e.target.value);
+                        setAuthError("");
+                        setResetSuccessInfo(null);
+                      }}
+                      className="w-full rounded-lg border border-[#ccd1de] px-3 py-2 text-[13.5px] text-[#1e2330] focus:outline-none focus:border-[#1f2d5a]"
+                    />
+                  )}
                 </div>
 
                 {/* Member Info Card */}
@@ -1001,22 +1178,82 @@ export default function TaskBoardApp() {
                     <span className="font-medium text-[#1f2d5a]">Official Email:</span>{" "}
                     <code className="text-[#0b69a3] font-mono-code">{selectedOfficial.email}</code>
                   </div>
-                  <div className="text-[#525b70] flex items-center gap-1.5">
-                    <span className="font-medium text-[#1f2d5a]">Phone Number:</span>{" "}
-                    <span className="font-mono-code font-semibold text-[#1e2330]">{selectedOfficial.phone}</span>
-                  </div>
+                  {selectedOfficial.phone && (
+                    <div className="text-[#525b70] flex items-center gap-1.5">
+                      <span className="font-medium text-[#1f2d5a]">Phone Number:</span>{" "}
+                      <span className="font-mono-code font-semibold text-[#1e2330]">{selectedOfficial.phone}</span>
+                    </div>
+                  )}
                 </div>
 
-                {!isPasswordSet ? (
-                  /* Case A: First time login - prompt user to set password */
+                {authSubMode === "login" ? (
+                  /* Standard Sign In with Password */
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      handleLogin();
+                    }}
+                    className="space-y-3.5 pt-1"
+                  >
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="block text-[13px] font-semibold text-[#1f2d5a]">
+                          Password
+                        </label>
+                        <button
+                          type="button"
+                          onClick={handleForgotPassword}
+                          disabled={authBusy}
+                          className="text-[12px] text-[#0b69a3] hover:underline cursor-pointer font-semibold"
+                        >
+                          Forgot password?
+                        </button>
+                      </div>
+                      <input
+                        type="password"
+                        required
+                        autoComplete="current-password"
+                        placeholder="••••••••"
+                        value={authPassword}
+                        onChange={(e) => setAuthPassword(e.target.value)}
+                        className="w-full rounded-lg border border-[#ccd1de] px-3 py-2 text-[14px] text-[#1e2330] focus:outline-none focus:border-[#1f2d5a]"
+                      />
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={authBusy}
+                      className="w-full py-2.5 rounded-lg bg-[#1f2d5a] hover:bg-[#2a3a6e] text-white font-semibold text-[14px] transition-colors cursor-pointer disabled:opacity-50"
+                    >
+                      {authBusy ? "Signing in..." : "Sign in"}
+                    </button>
+
+                    <div className="flex flex-col items-center gap-1.5 pt-1 text-center">
+                      <p className="text-[11.5px] text-[#6b7280]">
+                        Default agency password: <code className="bg-[#f0f4ff] text-[#1f2d5a] font-mono-code px-1.5 py-0.5 rounded font-bold">Cap@2026!</code>
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAuthSubMode("set_password");
+                          setAuthError("");
+                        }}
+                        className="text-[12px] font-bold text-[#e8792b] hover:underline cursor-pointer"
+                      >
+                        🔑 Set or change personal password
+                      </button>
+                    </div>
+                  </form>
+                ) : (
+                  /* Set or Change Password */
                   <form onSubmit={handleExistingMemberSetPassword} className="space-y-3.5 pt-1">
                     <div className="p-3 rounded-lg bg-[#eff6ff] border border-[#bfdbfe] text-[12px] text-[#1e3a8a] space-y-1">
                       <div className="font-bold flex items-center gap-1.5 text-[12.5px]">
                         <span>🔑</span>
-                        <span>First-Time Sign In: Set Your Password</span>
+                        <span>Set or Change Personal Password</span>
                       </div>
                       <p>
-                        Welcome, <strong>{selectedOfficial.name}</strong>! As an existing team member, please set your password below to activate your account.
+                        Set a new password for <strong>{selectedOfficial.name}</strong> ({selectedOfficial.email}).
                       </p>
                     </div>
 
@@ -1055,50 +1292,21 @@ export default function TaskBoardApp() {
                       disabled={authBusy}
                       className="w-full py-2.5 rounded-lg bg-[#1f2d5a] hover:bg-[#2a3a6e] text-white font-semibold text-[14px] transition-colors cursor-pointer disabled:opacity-50"
                     >
-                      {authBusy ? "Activating account..." : "Set Password & Sign In"}
+                      {authBusy ? "Saving password..." : "Set Password & Sign In"}
                     </button>
-                  </form>
-                ) : (
-                  /* Case B: Password already set - normal sign in with forgot password option */
-                  <form
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      handleLogin(selectedOfficial.email, authPassword);
-                    }}
-                    className="space-y-3.5 pt-1"
-                  >
-                    <div>
-                      <div className="flex items-center justify-between mb-1">
-                        <label className="block text-[13px] font-semibold text-[#1f2d5a]">
-                          Password
-                        </label>
-                        <button
-                          type="button"
-                          onClick={handleForgotPassword}
-                          disabled={authBusy}
-                          className="text-[12px] text-[#0b69a3] hover:underline cursor-pointer font-semibold"
-                        >
-                          Forgot password?
-                        </button>
-                      </div>
-                      <input
-                        type="password"
-                        required
-                        autoComplete="current-password"
-                        placeholder="••••••••"
-                        value={authPassword}
-                        onChange={(e) => setAuthPassword(e.target.value)}
-                        className="w-full rounded-lg border border-[#ccd1de] px-3 py-2 text-[14px] text-[#1e2330] focus:outline-none focus:border-[#1f2d5a]"
-                      />
-                    </div>
 
-                    <button
-                      type="submit"
-                      disabled={authBusy}
-                      className="w-full py-2.5 rounded-lg bg-[#1f2d5a] hover:bg-[#2a3a6e] text-white font-semibold text-[14px] transition-colors cursor-pointer disabled:opacity-50"
-                    >
-                      {authBusy ? "Signing in..." : "Sign in"}
-                    </button>
+                    <div className="text-center pt-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAuthSubMode("login");
+                          setAuthError("");
+                        }}
+                        className="text-[12px] font-bold text-[#0b69a3] hover:underline cursor-pointer"
+                      >
+                        ← Back to standard Sign In
+                      </button>
+                    </div>
                   </form>
                 )}
               </div>
