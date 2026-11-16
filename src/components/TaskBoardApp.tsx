@@ -237,6 +237,7 @@ export default function TaskBoardApp() {
 
   // Update info modal on dashboard
   const [showUpdateInfoModal, setShowUpdateInfoModal] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Task Log filters & modals
   const [searchQuery, setSearchQuery] = useState("");
@@ -1243,22 +1244,25 @@ export default function TaskBoardApp() {
 
       {/* Top Header: Row 1 (Logo + Date, CSV, User, Sign out) & Row 2 (Task Board + Tabs) */}
       <header className="bg-white border-b-2 border-[#dce1ec] sticky top-0 z-30 shadow-2xs">
-        {/* Row 1: CAP Logo on left, Date / Export CSV / User / Sign out on right */}
-        <div className="max-w-[1600px] mx-auto px-4 sm:px-6 h-12 flex items-center justify-between gap-4 border-b border-[#e8ecf6]">
+        {/* Row 1: Logo + Actions */}
+        <div className="max-w-[1600px] mx-auto px-3 sm:px-6 h-13 sm:h-12 flex items-center justify-between gap-2 border-b border-[#e8ecf6]">
           <button
             type="button"
             onClick={() => setActiveTab("today")}
-            className="flex items-center gap-2.5 shrink-0 cursor-pointer focus:outline-none"
+            className="flex items-center gap-2 shrink-0 cursor-pointer focus:outline-none"
           >
             <img
               src="/cap-logo-black.png"
               alt="CAP"
-              className="h-6 w-auto object-contain"
+              className="h-5 sm:h-6 w-auto object-contain"
             />
+            <span className="font-heading font-bold text-[13.5px] text-[#1f2d5a] md:hidden">
+              Task Board
+            </span>
           </button>
 
-          {/* Right Utilities: Date, New Task, Export CSV, Name, Role, Sign out */}
-          <div className="flex items-center gap-2.5 shrink-0">
+          {/* Desktop Right Utilities */}
+          <div className="hidden md:flex items-center gap-2.5 shrink-0">
             <div className="flex items-center gap-1.5 text-[12.5px] font-medium text-[#3b4254] border border-[#ccd1de] bg-[#f8f9fc] rounded-lg px-2.5 py-1">
               <span>Date:</span>
               <input
@@ -1287,7 +1291,7 @@ export default function TaskBoardApp() {
                   setEditingTask(null);
                   setShowTaskModal(true);
                 }}
-                className="px-3 py-1 rounded-lg bg-[#e8792b] hover:bg-[#d76a1e] text-white text-[12.5px] font-semibold cursor-pointer transition-colors"
+                className="px-3 py-1 rounded-lg bg-[#e8792b] hover:bg-[#d76a1e] text-white text-[12.5px] font-semibold cursor-pointer transition-colors shadow-2xs"
               >
                 + New task
               </button>
@@ -1301,7 +1305,7 @@ export default function TaskBoardApp() {
               Export CSV
             </button>
 
-            <div className="h-4 w-px bg-[#dce1ec] mx-0.5 hidden sm:block" />
+            <div className="h-4 w-px bg-[#dce1ec] mx-0.5" />
 
             <div className="flex items-center gap-2 text-[13px]">
               <span className="text-[#1e2330] font-semibold">
@@ -1333,21 +1337,119 @@ export default function TaskBoardApp() {
               </button>
             </div>
           </div>
+
+          {/* Mobile Right Utilities */}
+          <div className="flex md:hidden items-center gap-1.5 shrink-0">
+            {isAdmin && (
+              <button
+                type="button"
+                onClick={() => {
+                  setEditingTask(null);
+                  setShowTaskModal(true);
+                }}
+                className="px-2.5 py-1 rounded-md bg-[#e8792b] text-white text-[11.5px] font-bold cursor-pointer shadow-2xs"
+              >
+                + Task
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={() => setShowExportModal(true)}
+              className="px-2 py-1 rounded-md border border-[#ccd1de] bg-white text-[#1f2d5a] text-[11.5px] font-bold cursor-pointer"
+            >
+              CSV
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="px-2 py-1 rounded-md border border-[#ccd1de] bg-[#f8f9fc] text-[#1f2d5a] text-[11.5px] font-bold cursor-pointer flex items-center gap-1"
+            >
+              <span className="max-w-[70px] truncate">{currentUser.name.split(" ")[0]}</span>
+              <span className="text-[9px] text-[#64748b]">{mobileMenuOpen ? "▲" : "▼"}</span>
+            </button>
+          </div>
         </div>
 
-        {/* Row 2: Task Board Title & Navigation Tabs below Date/Name/CSV */}
-        <div className="max-w-[1600px] mx-auto px-4 sm:px-6 h-12 flex items-center gap-6">
+        {/* Mobile Dropdown Menu Drawer */}
+        {mobileMenuOpen && (
+          <div className="md:hidden bg-white border-b border-[#dce1ec] p-3 space-y-3 shadow-lg animate-in slide-in-from-top-2 duration-150">
+            <div className="flex items-center justify-between pb-2 border-b border-[#e8ecf6]">
+              <div>
+                <div className="font-bold text-[13.5px] text-[#1e2330]">
+                  {currentUser.name}
+                </div>
+                <div className="text-[11.5px] text-[#64748b]">{currentUser.email}</div>
+              </div>
+              <span
+                className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${
+                  isAdmin ? "bg-[#1f2d5a] text-white" : "bg-[#e8ecf6] text-[#1f2d5a]"
+                }`}
+              >
+                {isAdmin ? "Admin" : "Member"}
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between gap-2 p-2 rounded-lg bg-[#f8f9fc] border border-[#e2e8f0]">
+              <span className="text-[12px] font-bold text-[#1f2d5a] shrink-0">Date:</span>
+              <div className="flex items-center gap-1.5 flex-1 justify-end">
+                <input
+                  type="date"
+                  value={referenceDate}
+                  onChange={(e) => setReferenceDate(e.target.value)}
+                  className="bg-white border border-[#ccd1de] rounded px-2 py-0.5 text-[#1f2d5a] font-mono-code font-semibold text-[11.5px] focus:outline-none"
+                />
+                {referenceDate !== getTodayDateStr() && (
+                  <button
+                    type="button"
+                    onClick={() => setReferenceDate(getTodayDateStr())}
+                    className="text-[11px] font-bold text-[#e8792b] bg-[#fdf0e6] px-2 py-0.5 rounded border border-[#e8792b]"
+                  >
+                    Today
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowUpdateInfoModal(true);
+                  setMobileMenuOpen(false);
+                }}
+                className="py-1.5 px-3 rounded-lg border border-[#ccd1de] bg-white hover:bg-[#f0f4ff] text-[#1f2d5a] text-[12px] font-bold text-center"
+              >
+                ✏️ Update info
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  handleLogout();
+                }}
+                className="py-1.5 px-3 rounded-lg border border-[#ffc7ce] bg-[#ffe1e5] text-[#9c0006] text-[12px] font-bold text-center"
+              >
+                Sign out
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Row 2: Horizontal Scrolling Navigation Tabs */}
+        <div className="max-w-[1600px] mx-auto px-2 sm:px-6 h-11 sm:h-12 flex items-center gap-2 sm:gap-6 overflow-hidden">
           <button
             type="button"
             onClick={() => setActiveTab("today")}
-            className="font-heading font-bold text-[15px] text-[#1f2d5a] whitespace-nowrap cursor-pointer focus:outline-none"
+            className="hidden sm:block font-heading font-bold text-[15px] text-[#1f2d5a] whitespace-nowrap cursor-pointer focus:outline-none"
           >
             Task Board
           </button>
 
-          <div className="h-4 w-px bg-[#dce1ec] shrink-0" />
+          <div className="h-4 w-px bg-[#dce1ec] shrink-0 hidden sm:block" />
 
-          <nav className="flex items-center gap-1 flex-wrap">
+          <nav className="flex items-center gap-1 overflow-x-auto no-scrollbar scroll-smooth whitespace-nowrap py-1 flex-1 -mx-1 px-1">
             {[
               { id: "today", label: "Today", count: todaySummary.rankedTasks.length },
               {
@@ -1373,8 +1475,11 @@ export default function TaskBoardApp() {
                 <button
                   key={tab.id}
                   type="button"
-                  onClick={() => setActiveTab(tab.id as ActiveTab)}
-                  className={`px-3.5 h-12 text-[13.5px] font-semibold border-b-[3px] whitespace-nowrap flex items-center gap-1.5 transition-colors cursor-pointer ${
+                  onClick={() => {
+                    setActiveTab(tab.id as ActiveTab);
+                    setMobileMenuOpen(false);
+                  }}
+                  className={`px-3 sm:px-3.5 h-9 sm:h-12 text-[12.5px] sm:text-[13.5px] font-semibold border-b-[3px] shrink-0 whitespace-nowrap flex items-center gap-1.5 transition-colors cursor-pointer ${
                     active
                       ? "border-[#e8792b] text-[#1f2d5a] bg-[#f8f9fc]"
                       : "border-transparent text-[#3b4254] hover:text-[#1f2d5a] hover:bg-[#f8f9fc]"
@@ -1383,7 +1488,7 @@ export default function TaskBoardApp() {
                   <span>{tab.label}</span>
                   {tab.count !== undefined && (
                     <span
-                      className={`text-[11.5px] font-mono-code px-1.5 py-0.5 rounded-full font-bold ${
+                      className={`text-[10.5px] sm:text-[11.5px] font-mono-code px-1.5 py-0.2 sm:py-0.5 rounded-full font-bold ${
                         tab.alert
                           ? "bg-[#e8792b] text-white"
                           : active
@@ -1409,7 +1514,7 @@ export default function TaskBoardApp() {
         {activeTab === "today" && (
           <div className="space-y-6">
             {/* Summary Tiles with CAP Brand Colors */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2 sm:gap-3">
               {[
                 {
                   label: "Open tasks",
@@ -1453,16 +1558,18 @@ export default function TaskBoardApp() {
                   border: "border-t-[#525b70]",
                   text: "text-[#1f2d5a]",
                 },
-              ].map((kpi) => (
+              ].map((kpi, idx) => (
                 <div
                   key={kpi.label}
-                  className={`bg-white rounded-lg border border-[#dce1ec] border-t-[3px] ${kpi.border} px-4 py-3 shadow-xs`}
+                  className={`bg-white rounded-lg border border-[#dce1ec] border-t-[3px] ${kpi.border} p-2.5 sm:px-4 sm:py-3 shadow-xs ${
+                    idx === 6 ? "col-span-2 sm:col-span-1" : ""
+                  }`}
                 >
-                  <div className="text-[12.5px] font-semibold text-[#3b4254]">
+                  <div className="text-[11.5px] sm:text-[12.5px] font-semibold text-[#3b4254] truncate">
                     {kpi.label}
                   </div>
                   <div
-                    className={`text-2xl font-bold font-heading mt-0.5 ${kpi.text}`}
+                    className={`text-xl sm:text-2xl font-bold font-heading mt-0.5 ${kpi.text}`}
                   >
                     {kpi.value}
                   </div>
@@ -1472,17 +1579,17 @@ export default function TaskBoardApp() {
 
             {/* Today Ranked Table */}
             <div className="space-y-3">
-              <div className="flex items-baseline justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-1 sm:gap-2">
                 <div>
-                  <h2 className="text-lg font-bold text-[#1f2d5a]">
+                  <h2 className="text-base sm:text-lg font-bold text-[#1f2d5a]">
                     Today Board
                   </h2>
-                  <p className="text-[13px] text-[#3b4254]">
+                  <p className="text-[12px] sm:text-[13px] text-[#3b4254]">
                     Open tasks ranked automatically by urgency and deadline.
                   </p>
                 </div>
                 {!isAdmin && (
-                  <span className="text-[12.5px] font-semibold text-[#1f2d5a] bg-[#e8ecf6] px-2.5 py-1 rounded-md">
+                  <span className="self-start sm:self-auto text-[11.5px] sm:text-[12.5px] font-semibold text-[#1f2d5a] bg-[#e8ecf6] px-2.5 py-1 rounded-md">
                     Member mode (View only)
                   </span>
                 )}
@@ -1635,23 +1742,23 @@ export default function TaskBoardApp() {
         {activeTab === "myworks" && (
           <div className="space-y-6">
             {/* Member Header & Selector */}
-            <div className="bg-white rounded-lg border border-[#dce1ec] p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 shadow-xs">
+            <div className="bg-white rounded-lg border border-[#dce1ec] p-3.5 sm:p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3.5 shadow-xs">
               <div>
-                <h2 className="text-lg font-bold text-[#1f2d5a]">
+                <h2 className="text-base sm:text-lg font-bold text-[#1f2d5a]">
                   My Works — {selectedMemberName}
                 </h2>
-                <p className="text-[13px] text-[#3b4254]">
+                <p className="text-[12px] sm:text-[13px] text-[#3b4254]">
                   Ongoing tasks assigned to {selectedMemberName === currentUser.name ? "you" : selectedMemberName}, ordered by urgency and deadline.
                 </p>
               </div>
 
-              <div className="flex flex-wrap items-center gap-3">
-                <div className="flex items-center gap-2 text-[13px]">
-                  <span className="font-semibold text-[#3b4254]">Member:</span>
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2.5 sm:gap-3">
+                <div className="flex items-center gap-2 text-[12.5px] sm:text-[13px]">
+                  <span className="font-semibold text-[#3b4254] shrink-0">Member:</span>
                   <select
                     value={selectedMemberName}
                     onChange={(e) => setMyWorksMember(e.target.value)}
-                    className="rounded-lg border border-[#ccd1de] bg-white px-3 py-1.5 text-[13px] font-semibold text-[#1f2d5a] focus:outline-none focus:border-[#1f2d5a]"
+                    className="w-full sm:w-auto rounded-lg border border-[#ccd1de] bg-white px-2.5 py-1.5 text-[12.5px] sm:text-[13px] font-semibold text-[#1f2d5a] focus:outline-none focus:border-[#1f2d5a]"
                   >
                     <option value={currentUser.name}>
                       {currentUser.name} (Me)
@@ -1671,11 +1778,11 @@ export default function TaskBoardApp() {
                 </div>
 
                 {/* Sub-tabs: Ongoing vs Reviewing vs Done */}
-                <div className="inline-flex rounded-lg border border-[#ccd1de] bg-[#f8f9fc] p-0.5 text-[12.5px]">
+                <div className="inline-flex rounded-lg border border-[#ccd1de] bg-[#f8f9fc] p-0.5 text-[11.5px] sm:text-[12.5px] overflow-x-auto no-scrollbar whitespace-nowrap">
                   <button
                     type="button"
                     onClick={() => setMyWorksSubTab("ongoing")}
-                    className={`px-3 py-1 rounded-md font-semibold cursor-pointer ${
+                    className={`px-2.5 sm:px-3 py-1 rounded-md font-semibold cursor-pointer shrink-0 ${
                       myWorksSubTab === "ongoing"
                         ? "bg-[#1f2d5a] text-white"
                         : "text-[#3b4254] hover:text-[#1f2d5a]"
@@ -1686,7 +1793,7 @@ export default function TaskBoardApp() {
                   <button
                     type="button"
                     onClick={() => setMyWorksSubTab("review")}
-                    className={`px-3 py-1 rounded-md font-semibold cursor-pointer ${
+                    className={`px-2.5 sm:px-3 py-1 rounded-md font-semibold cursor-pointer shrink-0 ${
                       myWorksSubTab === "review"
                         ? "bg-[#1f2d5a] text-white"
                         : "text-[#3b4254] hover:text-[#1f2d5a]"
@@ -1697,7 +1804,7 @@ export default function TaskBoardApp() {
                   <button
                     type="button"
                     onClick={() => setMyWorksSubTab("done")}
-                    className={`px-3 py-1 rounded-md font-semibold cursor-pointer ${
+                    className={`px-2.5 sm:px-3 py-1 rounded-md font-semibold cursor-pointer shrink-0 ${
                       myWorksSubTab === "done"
                         ? "bg-[#1f2d5a] text-white"
                         : "text-[#3b4254] hover:text-[#1f2d5a]"
@@ -1710,7 +1817,7 @@ export default function TaskBoardApp() {
             </div>
 
             {/* Member KPI Cards */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3">
               {[
                 {
                   label: "Ongoing works",
@@ -1751,13 +1858,13 @@ export default function TaskBoardApp() {
               ].map((kpi) => (
                 <div
                   key={kpi.label}
-                  className={`bg-white rounded-lg border border-[#dce1ec] border-t-[3px] ${kpi.border} px-4 py-3 shadow-xs`}
+                  className={`bg-white rounded-lg border border-[#dce1ec] border-t-[3px] ${kpi.border} p-2.5 sm:px-4 sm:py-3 shadow-xs`}
                 >
-                  <div className="text-[12.5px] font-semibold text-[#3b4254]">
+                  <div className="text-[11.5px] sm:text-[12.5px] font-semibold text-[#3b4254] truncate">
                     {kpi.label}
                   </div>
                   <div
-                    className={`text-2xl font-bold font-heading mt-0.5 ${kpi.text}`}
+                    className={`text-xl sm:text-2xl font-bold font-heading mt-0.5 ${kpi.text}`}
                   >
                     {kpi.value}
                   </div>
@@ -1932,112 +2039,114 @@ export default function TaskBoardApp() {
         {activeTab === "tasklog" && (
           <div className="space-y-4">
             {/* Filter Bar */}
-            <div className="bg-white rounded-lg border border-[#dce1ec] p-3.5 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 shadow-xs">
-              <div className="flex flex-wrap items-center gap-2.5 flex-1">
+            <div className="bg-white rounded-lg border border-[#dce1ec] p-3 sm:p-3.5 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 shadow-xs">
+              <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-2 flex-1">
                 <input
                   type="text"
                   placeholder="Search tasks, clients, owners..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="rounded-lg border border-[#ccd1de] bg-white px-3 py-1.5 text-[13.5px] text-[#1e2330] placeholder:text-[#525b70] w-full sm:w-64 focus:outline-none focus:border-[#1f2d5a]"
+                  className="rounded-lg border border-[#ccd1de] bg-white px-3 py-1.5 text-[13px] text-[#1e2330] placeholder:text-[#525b70] w-full sm:w-64 focus:outline-none focus:border-[#1f2d5a]"
                 />
 
-                <select
-                  value={filterClient}
-                  onChange={(e) => setFilterClient(e.target.value)}
-                  className="rounded-lg border border-[#ccd1de] bg-white px-2.5 py-1.5 text-[13px] font-medium text-[#1e2330]"
-                >
-                  <option value="ALL">All clients</option>
-                  {clients.map((c) => (
-                    <option key={c.id} value={c.name}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-
-                <select
-                  value={filterOwner}
-                  onChange={(e) => setFilterOwner(e.target.value)}
-                  className="rounded-lg border border-[#ccd1de] bg-white px-2.5 py-1.5 text-[13px] font-medium text-[#1e2330]"
-                >
-                  <option value="ALL">All owners</option>
-                  {team.map((m) => (
-                    <option key={m.id} value={m.name}>
-                      {m.name}
-                    </option>
-                  ))}
-                </select>
-
-                <select
-                  value={filterStatus}
-                  onChange={(e) => setFilterStatus(e.target.value)}
-                  className="rounded-lg border border-[#ccd1de] bg-white px-2.5 py-1.5 text-[13px] font-medium text-[#1e2330]"
-                >
-                  <option value="ALL">All statuses</option>
-                  {STATUS_LIST.map((s) => (
-                    <option key={s} value={s}>
-                      {s}
-                    </option>
-                  ))}
-                </select>
-
-                <select
-                  value={filterFlag}
-                  onChange={(e) => setFilterFlag(e.target.value)}
-                  className="rounded-lg border border-[#ccd1de] bg-white px-2.5 py-1.5 text-[13px] font-medium text-[#1e2330]"
-                >
-                  <option value="ALL">All flags</option>
-                  {[
-                    "Overdue",
-                    "Due today",
-                    "Due soon",
-                    "Blocked",
-                    "No deadline",
-                    "On track",
-                    "Done",
-                    "On hold",
-                  ].map((f) => (
-                    <option key={f} value={f}>
-                      {f}
-                    </option>
-                  ))}
-                </select>
-
-                <select
-                  value={filterWorkType}
-                  onChange={(e) => setFilterWorkType(e.target.value)}
-                  className="rounded-lg border border-[#ccd1de] bg-white px-2.5 py-1.5 text-[13px] font-medium text-[#1e2330]"
-                >
-                  <option value="ALL">All types</option>
-                  <option value="Client">Client</option>
-                  <option value="Pitch">Pitch</option>
-                  <option value="Internal">Internal</option>
-                </select>
-
-                {(searchQuery ||
-                  filterClient !== "ALL" ||
-                  filterOwner !== "ALL" ||
-                  filterStatus !== "ALL" ||
-                  filterFlag !== "ALL" ||
-                  filterWorkType !== "ALL") && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSearchQuery("");
-                      setFilterClient("ALL");
-                      setFilterOwner("ALL");
-                      setFilterStatus("ALL");
-                      setFilterFlag("ALL");
-                      setFilterWorkType("ALL");
-                    }}
-                    className="text-[13px] font-semibold text-[#e8792b] hover:underline px-2 py-1 cursor-pointer"
+                <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 w-full sm:w-auto">
+                  <select
+                    value={filterClient}
+                    onChange={(e) => setFilterClient(e.target.value)}
+                    className="rounded-lg border border-[#ccd1de] bg-white px-2 py-1.5 text-[12px] sm:text-[13px] font-medium text-[#1e2330] w-full sm:w-auto"
                   >
-                    Reset
-                  </button>
-                )}
+                    <option value="ALL">All clients</option>
+                    {clients.map((c) => (
+                      <option key={c.id} value={c.name}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+
+                  <select
+                    value={filterOwner}
+                    onChange={(e) => setFilterOwner(e.target.value)}
+                    className="rounded-lg border border-[#ccd1de] bg-white px-2 py-1.5 text-[12px] sm:text-[13px] font-medium text-[#1e2330] w-full sm:w-auto"
+                  >
+                    <option value="ALL">All owners</option>
+                    {team.map((m) => (
+                      <option key={m.id} value={m.name}>
+                        {m.name}
+                      </option>
+                    ))}
+                  </select>
+
+                  <select
+                    value={filterStatus}
+                    onChange={(e) => setFilterStatus(e.target.value)}
+                    className="rounded-lg border border-[#ccd1de] bg-white px-2 py-1.5 text-[12px] sm:text-[13px] font-medium text-[#1e2330] w-full sm:w-auto"
+                  >
+                    <option value="ALL">All statuses</option>
+                    {STATUS_LIST.map((s) => (
+                      <option key={s} value={s}>
+                        {s}
+                      </option>
+                    ))}
+                  </select>
+
+                  <select
+                    value={filterFlag}
+                    onChange={(e) => setFilterFlag(e.target.value)}
+                    className="rounded-lg border border-[#ccd1de] bg-white px-2 py-1.5 text-[12px] sm:text-[13px] font-medium text-[#1e2330] w-full sm:w-auto"
+                  >
+                    <option value="ALL">All flags</option>
+                    {[
+                      "Overdue",
+                      "Due today",
+                      "Due soon",
+                      "Blocked",
+                      "No deadline",
+                      "On track",
+                      "Done",
+                      "On hold",
+                    ].map((f) => (
+                      <option key={f} value={f}>
+                        {f}
+                      </option>
+                    ))}
+                  </select>
+
+                  <select
+                    value={filterWorkType}
+                    onChange={(e) => setFilterWorkType(e.target.value)}
+                    className="col-span-2 sm:col-auto rounded-lg border border-[#ccd1de] bg-white px-2 py-1.5 text-[12px] sm:text-[13px] font-medium text-[#1e2330] w-full sm:w-auto"
+                  >
+                    <option value="ALL">All types</option>
+                    <option value="Client">Client</option>
+                    <option value="Pitch">Pitch</option>
+                    <option value="Internal">Internal</option>
+                  </select>
+
+                  {(searchQuery ||
+                    filterClient !== "ALL" ||
+                    filterOwner !== "ALL" ||
+                    filterStatus !== "ALL" ||
+                    filterFlag !== "ALL" ||
+                    filterWorkType !== "ALL") && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSearchQuery("");
+                        setFilterClient("ALL");
+                        setFilterOwner("ALL");
+                        setFilterStatus("ALL");
+                        setFilterFlag("ALL");
+                        setFilterWorkType("ALL");
+                      }}
+                      className="col-span-2 sm:col-auto text-[12px] sm:text-[13px] font-semibold text-[#e8792b] hover:underline px-2 py-1 cursor-pointer text-center"
+                    >
+                      Reset filters
+                    </button>
+                  )}
+                </div>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center justify-between sm:justify-start gap-2 pt-2 sm:pt-0 border-t sm:border-t-0 border-[#e8ecf6]">
                 <div className="inline-flex rounded-lg border border-[#ccd1de] bg-[#f8f9fc] p-0.5 text-[13px]">
                   <button
                     type="button"

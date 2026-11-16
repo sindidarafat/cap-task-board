@@ -26,6 +26,13 @@ export default function StickyTable({
       const theadEl = tableEl.querySelector("thead") as HTMLElement | null;
       if (!theadEl) return;
 
+      // On mobile viewports (< 768px), disable JavaScript translate3d pinning to prevent header overlapping rows during touch/pinch and horizontal scroll
+      if (typeof window !== "undefined" && window.innerWidth < 768) {
+        theadEl.style.transform = "";
+        theadEl.style.boxShadow = "";
+        return;
+      }
+
       const headerEl = document.querySelector("header");
       const headerBottom = headerEl
         ? Math.max(0, headerEl.getBoundingClientRect().bottom)

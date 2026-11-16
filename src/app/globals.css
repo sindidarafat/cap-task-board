@@ -70,3 +70,22 @@ h1, h2, h3, .font-heading {
 .cap-table tbody tr:last-child td {
   border-bottom: none;
 }
+
+/* Hide scrollbar for Chrome, Safari and Opera */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+/* Hide scrollbar for IE, Edge and Firefox */
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Mobile-friendly table styling */
+@media (max-width: 768px) {
+  .cap-table th, .cap-table td {
+    padding-top: 0.625rem;
+    padding-bottom: 0.625rem;
+    font-size: 12px;
+  }
+}

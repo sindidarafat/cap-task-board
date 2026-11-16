@@ -170,7 +170,7 @@ export default function SendReminderDropdown({
               </button>
             </div>
 
-            <form onSubmit={handleSend} className="p-5 space-y-4">
+            <form onSubmit={handleSend} className="p-4 sm:p-5 space-y-4 max-h-[80vh] overflow-y-auto">
               {error && (
                 <div className="p-2.5 rounded-lg bg-[#ffe1e5] border border-[#f5c2c7] text-[#9c0006] text-[12.5px] font-medium flex items-center gap-1.5">
                   <span>⚠️</span>

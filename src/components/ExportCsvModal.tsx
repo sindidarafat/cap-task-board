@@ -527,7 +527,7 @@ export default function ExportCsvModal({
         </div>
 
         {/* Modal Body */}
-        <div className="p-6 overflow-y-auto space-y-6 flex-1 text-[#1e2330]">
+        <div className="p-4 sm:p-6 overflow-y-auto space-y-5 sm:space-y-6 flex-1 text-[#1e2330]">
           {/* Step 1: Select Page / Dataset */}
           <div>
             <label className="block text-[13px] font-bold text-[#1f2d5a] uppercase tracking-wider mb-2.5">

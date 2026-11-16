@@ -655,7 +655,7 @@ export default function AdminRoomView({
                 Close
               </button>
             </div>
-            <form onSubmit={handleCreateAccount} className="p-5 space-y-4">
+            <form onSubmit={handleCreateAccount} className="p-4 sm:p-5 space-y-4 max-h-[80vh] overflow-y-auto">
               {team.length > 0 && (
                 <div>
                   <label className="block text-[13px] font-semibold text-[#1f2d5a] mb-1">
