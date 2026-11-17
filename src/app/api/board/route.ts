@@ -1,26 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser, isApprovedAdmin } from "@/lib/auth";
-import { appendActivity, getDb, sanitizeUser, saveDb, syncClientUsersToDb } from "@/lib/db";
+import { appendActivity, extractAndSyncRequestData, getDb, sanitizeUser, saveDb } from "@/lib/db";
 import { createInitialDatabase } from "@/lib/seed-data";
 
 export async function GET(request: NextRequest) {
   const db = await getDb();
-
-  // If client passed local users/credentials header, sync them into db.users and db.team
-  const clientUsersHeader = request.headers.get("x-cap-client-users");
-  if (clientUsersHeader) {
-    try {
-      const clientUsers = JSON.parse(clientUsersHeader);
-      if (Array.isArray(clientUsers)) {
-        const changed = syncClientUsersToDb(db, clientUsers);
-        if (changed) {
-          await saveDb(db);
-        }
-      }
-    } catch {
-      // ignore parse errors
-    }
-  }
+  await extractAndSyncRequestData(request, db);
 
   const user = await getCurrentUser(request);
 
@@ -32,6 +17,7 @@ export async function GET(request: NextRequest) {
     estimateBuffer: db.estimateBuffer,
     users: db.users.map(sanitizeUser),
     activityLog: db.activityLog,
+    deletedTaskIds: db.deletedTaskIds || [],
   });
 }
 

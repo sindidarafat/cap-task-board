@@ -44,6 +44,7 @@ export interface TaskRecord {
   revisions: number | null;
   firstRoundApproved: "Yes" | "No" | "";
   notes: string;
+  updatedAt?: string;
 }
 
 export interface ComputedTask extends TaskRecord {
@@ -135,4 +136,5 @@ export interface DatabaseSchema {
   users: UserAccount[];
   activityLog: ActivityLogEntry[];
   settings?: AppSettings;
+  deletedTaskIds?: string[];
 }

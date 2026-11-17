@@ -1011,11 +1011,11 @@
       "phone": "+8801643116621",
       "passwordHash": "$2b$08$CLDgv8zXjrrT.zuST7MjrOCbe.oUspNivkqSl.3cxJwrMAOG3Y/EG",
       "passwordSet": true,
-      "role": "MEMBER",
-      "adminRequestStatus": "PENDING",
+      "role": "ADMIN",
+      "adminRequestStatus": "APPROVED",
       "teamRole": "Client Servicing Executive",
-      "approvedBy": null,
-      "approvedAt": null,
+      "approvedBy": "Admin",
+      "approvedAt": "2026-11-16T12:00:00Z",
       "requestedAt": "2026-11-11T08:30:00Z",
       "createdAt": "2026-11-09T10:00:00Z",
       "aliases": [
@@ -1315,5 +1315,10 @@
       "details": "Approved Amit Pramanik (Creative Director) as an Admin.",
       "category": "ADMIN_ROOM"
     }
-  ]
+  ],
+  "deletedTaskIds": [],
+  "settings": {
+    "resendApiKey": "",
+    "resendFromEmail": "CAP Task Board <onboarding@resend.dev>"
+  }
 }

@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser, isApprovedAdmin } from "@/lib/auth";
-import { appendActivity, getDb, saveDb } from "@/lib/db";
+import { appendActivity, extractAndSyncRequestData, getDb, saveDb } from "@/lib/db";
 import { ClientRecord } from "@/lib/types";
 
 export async function POST(request: NextRequest) {
+  const db = await getDb();
+  await extractAndSyncRequestData(request, db);
+
   const user = await getCurrentUser(request);
   if (!isApprovedAdmin(user)) {
     return NextResponse.json(
@@ -18,7 +21,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Client / Prospect name is required." }, { status: 400 });
   }
 
-  const db = await getDb();
   if (db.clients.some((c) => c.name.trim().toLowerCase() === name.toLowerCase())) {
     return NextResponse.json(
       { error: "A client or pitch with this name already exists." },
@@ -50,6 +52,9 @@ export async function POST(request: NextRequest) {
 }
 
 export async function PUT(request: NextRequest) {
+  const db = await getDb();
+  await extractAndSyncRequestData(request, db);
+
   const user = await getCurrentUser(request);
   if (!isApprovedAdmin(user)) {
     return NextResponse.json(
@@ -59,7 +64,6 @@ export async function PUT(request: NextRequest) {
   }
 
   const body = await request.json();
-  const db = await getDb();
   const idx = db.clients.findIndex((c) => c.id === body.id);
   if (idx === -1) {
     return NextResponse.json({ error: "Client not found." }, { status: 404 });
@@ -98,6 +102,9 @@ export async function PUT(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
+  const db = await getDb();
+  await extractAndSyncRequestData(request, db);
+
   const user = await getCurrentUser(request);
   if (!isApprovedAdmin(user)) {
     return NextResponse.json(
@@ -108,7 +115,6 @@ export async function DELETE(request: NextRequest) {
 
   const { searchParams } = new URL(request.url);
   const id = searchParams.get("id");
-  const db = await getDb();
   const target = db.clients.find((c) => c.id === id);
   if (!target) {
     return NextResponse.json({ error: "Client not found." }, { status: 404 });

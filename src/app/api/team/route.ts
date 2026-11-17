@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { getCurrentUser, isApprovedAdmin } from "@/lib/auth";
-import { appendActivity, getDb, saveDb } from "@/lib/db";
+import { appendActivity, extractAndSyncRequestData, getDb, saveDb } from "@/lib/db";
 import { TeamMember, UserAccount } from "@/lib/types";
 
 export async function POST(request: NextRequest) {
+  const db = await getDb();
+  await extractAndSyncRequestData(request, db);
+
   const user = await getCurrentUser(request);
   if (!isApprovedAdmin(user)) {
     return NextResponse.json(
@@ -19,7 +22,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Team member name is required." }, { status: 400 });
   }
 
-  const db = await getDb();
   if (db.team.some((m) => m.name.trim().toLowerCase() === name.toLowerCase())) {
     return NextResponse.json(
       { error: "A team member with this name already exists." },
@@ -90,6 +92,9 @@ export async function POST(request: NextRequest) {
 }
 
 export async function PUT(request: NextRequest) {
+  const db = await getDb();
+  await extractAndSyncRequestData(request, db);
+
   const user = await getCurrentUser(request);
   if (!isApprovedAdmin(user)) {
     return NextResponse.json(
@@ -99,7 +104,6 @@ export async function PUT(request: NextRequest) {
   }
 
   const body = await request.json();
-  const db = await getDb();
 
   if (typeof body.estimateBuffer === "number") {
     db.estimateBuffer = Math.max(0, Math.min(2, body.estimateBuffer));
@@ -180,6 +184,9 @@ export async function PUT(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
+  const db = await getDb();
+  await extractAndSyncRequestData(request, db);
+
   const user = await getCurrentUser(request);
   if (!isApprovedAdmin(user)) {
     return NextResponse.json(
@@ -190,7 +197,6 @@ export async function DELETE(request: NextRequest) {
 
   const { searchParams } = new URL(request.url);
   const id = searchParams.get("id");
-  const db = await getDb();
   const target = db.team.find((m) => m.id === id);
   if (!target) {
     return NextResponse.json({ error: "Team member not found." }, { status: 404 });

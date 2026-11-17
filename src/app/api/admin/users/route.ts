@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { getCurrentUser, isApprovedAdmin } from "@/lib/auth";
-import { appendActivity, getDb, sanitizeUser, saveDb } from "@/lib/db";
+import { appendActivity, extractAndSyncRequestData, getDb, sanitizeUser, saveDb } from "@/lib/db";
 import { UserAccount } from "@/lib/types";
 
 export async function POST(request: NextRequest) {
+  const db = await getDb();
+  await extractAndSyncRequestData(request, db);
+
   const currentUser = await getCurrentUser(request);
   if (!isApprovedAdmin(currentUser)) {
     return NextResponse.json(
@@ -17,7 +20,6 @@ export async function POST(request: NextRequest) {
   const action = body.action as string;
   const targetUserId = body.userId as string | undefined;
 
-  const db = await getDb();
   const now = new Date().toISOString();
 
   if (action === "approve_admin" || action === "promote_to_admin") {

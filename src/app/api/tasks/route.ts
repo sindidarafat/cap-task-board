@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser, isApprovedAdmin } from "@/lib/auth";
-import { appendActivity, getDb, saveDb } from "@/lib/db";
+import { appendActivity, extractAndSyncRequestData, getDb, saveDb } from "@/lib/db";
 import { getTodayDateStr } from "@/lib/formulas";
 import { TaskRecord } from "@/lib/types";
 
 export async function POST(request: NextRequest) {
+  const db = await getDb();
+  await extractAndSyncRequestData(request, db);
+
   const user = await getCurrentUser(request);
   if (!isApprovedAdmin(user)) {
     return NextResponse.json(
@@ -14,14 +17,14 @@ export async function POST(request: NextRequest) {
   }
 
   const body = await request.json();
-  const db = await getDb();
 
-  // Generate next T-XXX ID
+  // Generate next T-XXX ID from all existing tasks
   const maxNum = db.tasks.reduce((max, t) => {
     const match = t.id.match(/^T-(\d+)$/);
     return match ? Math.max(max, parseInt(match[1], 10)) : max;
   }, 0);
   const nextId = `T-${String(maxNum + 1).padStart(3, "0")}`;
+  const now = new Date().toISOString();
 
   // Auto-resolve workType from client and team from owner if not provided
   const matchedClient = db.clients.find(
@@ -64,6 +67,7 @@ export async function POST(request: NextRequest) {
         : null,
     firstRoundApproved: body.firstRoundApproved || "",
     notes: body.notes || "",
+    updatedAt: now,
   };
 
   if (!newTask.task) {
@@ -71,6 +75,11 @@ export async function POST(request: NextRequest) {
       { error: "Task / Deliverable title is required." },
       { status: 400 }
     );
+  }
+
+  // Remove nextId from deletedTaskIds if previously registered
+  if (db.deletedTaskIds) {
+    db.deletedTaskIds = db.deletedTaskIds.filter((id) => id !== nextId);
   }
 
   db.tasks.push(newTask);
@@ -88,6 +97,9 @@ export async function POST(request: NextRequest) {
 }
 
 export async function PUT(request: NextRequest) {
+  const db = await getDb();
+  await extractAndSyncRequestData(request, db);
+
   const user = await getCurrentUser(request);
   if (!isApprovedAdmin(user)) {
     return NextResponse.json(
@@ -97,11 +109,51 @@ export async function PUT(request: NextRequest) {
   }
 
   const body = await request.json();
-  const db = await getDb();
+  const now = new Date().toISOString();
 
-  const index = db.tasks.findIndex((t) => t.id === body.id);
+  let index = db.tasks.findIndex((t) => t.id === body.id);
   if (index === -1) {
-    return NextResponse.json({ error: "Task not found." }, { status: 404 });
+    // If task was created on client or another lambda and missing in this lambda's memory, re-hydrate
+    if (body.id && (body.task || body.client)) {
+      db.tasks.push({
+        id: body.id,
+        dateAdded: body.dateAdded || getTodayDateStr(),
+        client: (body.client || "").trim(),
+        workType: body.workType || "Client",
+        task: (body.task || "").trim() || "Untitled Task",
+        brief: body.brief || "",
+        owner: (body.owner || "").trim(),
+        team: body.team || "",
+        reviewer: (body.reviewer || "").trim(),
+        priority: body.priority || "High",
+        startDate: body.startDate || getTodayDateStr(),
+        internalDeadline: body.internalDeadline || "",
+        clientDeadline: body.clientDeadline || "",
+        estHours:
+          body.estHours !== undefined && body.estHours !== null && body.estHours !== ""
+            ? Number(body.estHours)
+            : null,
+        status: body.status || "Not started",
+        blockedBy: body.blockedBy || "",
+        blockedSince: body.blockedSince || "",
+        deliveredOn: body.deliveredOn || "",
+        completedOn: body.completedOn || "",
+        actualHours:
+          body.actualHours !== undefined && body.actualHours !== null && body.actualHours !== ""
+            ? Number(body.actualHours)
+            : null,
+        revisions:
+          body.revisions !== undefined && body.revisions !== null && body.revisions !== ""
+            ? Number(body.revisions)
+            : null,
+        firstRoundApproved: body.firstRoundApproved || "",
+        notes: body.notes || "",
+        updatedAt: now,
+      });
+      index = db.tasks.length - 1;
+    } else {
+      return NextResponse.json({ error: "Task not found." }, { status: 404 });
+    }
   }
 
   const existing = db.tasks[index];
@@ -138,6 +190,7 @@ export async function PUT(request: NextRequest) {
         : body.revisions !== undefined
         ? Number(body.revisions)
         : existing.revisions,
+    updatedAt: now,
   };
 
   // Auto-populate deliveredOn or completedOn if status transitioned and dates are blank
@@ -161,6 +214,11 @@ export async function PUT(request: NextRequest) {
     updated.blockedSince = "";
   }
 
+  // Remove from deletedTaskIds if present
+  if (db.deletedTaskIds) {
+    db.deletedTaskIds = db.deletedTaskIds.filter((id) => id !== updated.id);
+  }
+
   db.tasks[index] = updated;
 
   appendActivity(db, {
@@ -176,6 +234,9 @@ export async function PUT(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
+  const db = await getDb();
+  await extractAndSyncRequestData(request, db);
+
   const user = await getCurrentUser(request);
   if (!isApprovedAdmin(user)) {
     return NextResponse.json(
@@ -190,22 +251,24 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ error: "Task ID is required." }, { status: 400 });
   }
 
-  const db = await getDb();
   const target = db.tasks.find((t) => t.id === id);
-  if (!target) {
-    return NextResponse.json({ error: "Task not found." }, { status: 404 });
-  }
-
   db.tasks = db.tasks.filter((t) => t.id !== id);
+
+  if (!db.deletedTaskIds) db.deletedTaskIds = [];
+  if (!db.deletedTaskIds.includes(id)) {
+    db.deletedTaskIds.push(id);
+  }
 
   appendActivity(db, {
     actorName: user!.name,
     actorEmail: user!.email,
     action: `Deleted Task ${id}`,
-    details: `Removed "${target.task}" (${target.client}) from Task Log.`,
+    details: target
+      ? `Removed "${target.task}" (${target.client}) from Task Log.`
+      : `Removed task ${id} from Task Log.`,
     category: "TASK",
   });
 
   await saveDb(db);
-  return NextResponse.json({ tasks: db.tasks, activityLog: db.activityLog });
+  return NextResponse.json({ tasks: db.tasks, activityLog: db.activityLog, deletedId: id });
 }

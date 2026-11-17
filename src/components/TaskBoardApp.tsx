@@ -206,6 +206,72 @@ function saveLocalUserRecord(userRecord: Record<string, unknown>): void {
   } catch {}
 }
 
+function getLocalTaskRecords(): TaskRecord[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.localStorage.getItem("cap_board_tasks");
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveLocalTaskRecord(task: TaskRecord): void {
+  if (typeof window === "undefined" || !task || !task.id) return;
+  try {
+    const raw = window.localStorage.getItem("cap_board_tasks");
+    const list: TaskRecord[] = raw ? JSON.parse(raw) : [];
+    const idx = list.findIndex((t) => t.id === task.id);
+    const enriched: TaskRecord = {
+      ...task,
+      updatedAt: task.updatedAt || new Date().toISOString(),
+    };
+    if (idx >= 0) {
+      list[idx] = { ...list[idx], ...enriched };
+    } else {
+      list.push(enriched);
+    }
+    window.localStorage.setItem("cap_board_tasks", JSON.stringify(list));
+  } catch {}
+}
+
+function saveAllLocalTasks(tasks: TaskRecord[]): void {
+  if (typeof window === "undefined" || !Array.isArray(tasks)) return;
+  try {
+    window.localStorage.setItem("cap_board_tasks", JSON.stringify(tasks));
+  } catch {}
+}
+
+function getDeletedTaskIds(): string[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.localStorage.getItem("cap_deleted_task_ids");
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function addDeletedTaskId(id: string): void {
+  if (typeof window === "undefined" || !id) return;
+  try {
+    const raw = window.localStorage.getItem("cap_deleted_task_ids");
+    const list: string[] = raw ? JSON.parse(raw) : [];
+    if (!list.includes(id)) {
+      list.push(id);
+      window.localStorage.setItem("cap_deleted_task_ids", JSON.stringify(list));
+    }
+    const rawTasks = window.localStorage.getItem("cap_board_tasks");
+    if (rawTasks) {
+      const tasks: TaskRecord[] = JSON.parse(rawTasks);
+      window.localStorage.setItem(
+        "cap_board_tasks",
+        JSON.stringify(tasks.filter((t) => t.id !== id))
+      );
+    }
+  } catch {}
+}
+
 export default function TaskBoardApp() {
   const [currentUser, setCurrentUser] = useState<SafeUserAccount | null>(() => {
     if (typeof window !== "undefined") {
@@ -225,7 +291,16 @@ export default function TaskBoardApp() {
 
   const [loading, setLoading] = useState(true);
 
-  const [tasks, setTasks] = useState<TaskRecord[]>([]);
+  // Initialize tasks immediately from localStorage so UI is instant and never flickers
+  const [tasks, setTasks] = useState<TaskRecord[]>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const local = getLocalTaskRecords();
+        if (local.length > 0) return local;
+      } catch {}
+    }
+    return [];
+  });
   const [clients, setClients] = useState<ClientRecord[]>([]);
   const [team, setTeam] = useState<TeamMember[]>([]);
   const [estimateBuffer, setEstimateBuffer] = useState<number>(0.2);
@@ -307,6 +382,16 @@ export default function TaskBoardApp() {
         headers.set("x-cap-client-users", JSON.stringify(localUsers));
       }
 
+      const localTasks = getLocalTaskRecords();
+      if (localTasks.length > 0) {
+        headers.set("x-cap-client-tasks", JSON.stringify(localTasks));
+      }
+
+      const deletedIds = getDeletedTaskIds();
+      if (deletedIds.length > 0) {
+        headers.set("x-cap-client-deleted-tasks", JSON.stringify(deletedIds));
+      }
+
       const res = await fetch(url, {
         ...options,
         headers,
@@ -329,7 +414,46 @@ export default function TaskBoardApp() {
           window.localStorage.setItem("cap_current_user", JSON.stringify(data.user));
         }
       }
-      setTasks(data.tasks || []);
+
+      // Merge server tasks with client cached tasks so updates & additions are never lost
+      const deletedIds = new Set<string>([
+        ...getDeletedTaskIds(),
+        ...(Array.isArray(data.deletedTaskIds) ? data.deletedTaskIds : []),
+      ]);
+      const localTasks = getLocalTaskRecords();
+      const taskMap = new Map<string, TaskRecord>();
+
+      if (Array.isArray(data.tasks)) {
+        for (const t of data.tasks) {
+          if (!deletedIds.has(t.id)) {
+            taskMap.set(t.id, t);
+          }
+        }
+      }
+      for (const lt of localTasks) {
+        if (!deletedIds.has(lt.id)) {
+          const existing = taskMap.get(lt.id);
+          if (!existing) {
+            taskMap.set(lt.id, lt);
+          } else {
+            const ltTime = lt.updatedAt ? new Date(lt.updatedAt).getTime() : 0;
+            const exTime = existing.updatedAt ? new Date(existing.updatedAt).getTime() : 0;
+            if (ltTime > exTime) {
+              taskMap.set(lt.id, { ...existing, ...lt });
+            }
+          }
+        }
+      }
+
+      const mergedTasks = Array.from(taskMap.values()).sort((a, b) => {
+        const numA = parseInt((a.id.match(/^T-(\d+)$/) || [])[1] || "0", 10);
+        const numB = parseInt((b.id.match(/^T-(\d+)$/) || [])[1] || "0", 10);
+        return numA - numB;
+      });
+
+      setTasks(mergedTasks);
+      saveAllLocalTasks(mergedTasks);
+
       setClients(data.clients || []);
       setTeam(data.team || []);
       setEstimateBuffer(
@@ -834,16 +958,24 @@ export default function TaskBoardApp() {
         method: "PUT",
         body: JSON.stringify(taskData),
       });
-      setTasks(data.tasks);
-      setActivityLog(data.activityLog);
+      if (data.task) saveLocalTaskRecord(data.task);
+      if (Array.isArray(data.tasks)) {
+        setTasks(data.tasks);
+        saveAllLocalTasks(data.tasks);
+      }
+      if (data.activityLog) setActivityLog(data.activityLog);
       showToast(`Saved ${taskData.id}`);
     } else {
       const data = await apiFetch("/api/tasks", {
         method: "POST",
         body: JSON.stringify(taskData),
       });
-      setTasks(data.tasks);
-      setActivityLog(data.activityLog);
+      if (data.task) saveLocalTaskRecord(data.task);
+      if (Array.isArray(data.tasks)) {
+        setTasks(data.tasks);
+        saveAllLocalTasks(data.tasks);
+      }
+      if (data.activityLog) setActivityLog(data.activityLog);
       showToast(`Added ${data.task.id}`);
     }
   };
@@ -854,12 +986,19 @@ export default function TaskBoardApp() {
   ) => {
     if (!isAdmin) return;
     try {
+      const current = tasks.find((t) => t.id === taskId);
+      const payload = current ? { ...current, ...patch } : { id: taskId, ...patch };
+
       const data = await apiFetch("/api/tasks", {
         method: "PUT",
-        body: JSON.stringify({ id: taskId, ...patch }),
+        body: JSON.stringify(payload),
       });
-      setTasks(data.tasks);
-      setActivityLog(data.activityLog);
+      if (data.task) saveLocalTaskRecord(data.task);
+      if (Array.isArray(data.tasks)) {
+        setTasks(data.tasks);
+        saveAllLocalTasks(data.tasks);
+      }
+      if (data.activityLog) setActivityLog(data.activityLog);
     } catch (err: unknown) {
       showToast(err instanceof Error ? err.message : "Update failed");
     }
@@ -868,11 +1007,15 @@ export default function TaskBoardApp() {
   const handleDeleteTask = async (taskId: string) => {
     if (!isAdmin) return;
     try {
+      addDeletedTaskId(taskId);
       const data = await apiFetch(`/api/tasks?id=${encodeURIComponent(taskId)}`, {
         method: "DELETE",
       });
-      setTasks(data.tasks);
-      setActivityLog(data.activityLog);
+      if (Array.isArray(data.tasks)) {
+        setTasks(data.tasks);
+        saveAllLocalTasks(data.tasks);
+      }
+      if (data.activityLog) setActivityLog(data.activityLog);
       showToast(`Deleted ${taskId}`);
     } catch (err: unknown) {
       showToast(err instanceof Error ? err.message : "Delete failed");

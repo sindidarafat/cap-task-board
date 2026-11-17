@@ -1,6 +1,6 @@
 import crypto from "crypto";
 import { NextRequest } from "next/server";
-import { getDb, sanitizeUser } from "./db";
+import { getDb, sanitizeUser, saveDb, syncClientUsersToDb } from "./db";
 import { SafeUserAccount } from "./types";
 
 export const SESSION_COOKIE_NAME = "cap_session_token";
@@ -57,6 +57,22 @@ export async function getCurrentUser(request: NextRequest): Promise<SafeUserAcco
   if (!tokenUser) return null;
 
   const db = await getDb();
+
+  // Ensure any client-cached users in request headers are synced
+  const clientUsersHeader = request.headers.get("x-cap-client-users");
+  if (clientUsersHeader) {
+    try {
+      const clientUsers = JSON.parse(clientUsersHeader);
+      if (Array.isArray(clientUsers)) {
+        if (syncClientUsersToDb(db, clientUsers)) {
+          await saveDb(db);
+        }
+      }
+    } catch {
+      // ignore parse errors
+    }
+  }
+
   const dbUser = db.users.find(
     (u) =>
       u.id === tokenUser.id ||
@@ -64,6 +80,15 @@ export async function getCurrentUser(request: NextRequest): Promise<SafeUserAcco
   );
 
   if (dbUser) {
+    // If the cryptographically verified session token has approved admin status,
+    // ensure dbUser reflects it so serverless cold starts never demote approved admins
+    if (tokenUser.role === "ADMIN" && tokenUser.adminRequestStatus === "APPROVED") {
+      if (dbUser.role !== "ADMIN" || dbUser.adminRequestStatus !== "APPROVED") {
+        dbUser.role = "ADMIN";
+        dbUser.adminRequestStatus = "APPROVED";
+        await saveDb(db);
+      }
+    }
     return sanitizeUser(dbUser);
   }
 

@@ -1,7 +1,16 @@
 import fs from "fs";
 import path from "path";
 import os from "os";
-import { ActivityLogEntry, DatabaseSchema, SafeUserAccount, UserAccount } from "./types";
+import { NextRequest } from "next/server";
+import {
+  ActivityLogEntry,
+  ClientRecord,
+  DatabaseSchema,
+  SafeUserAccount,
+  TaskRecord,
+  TeamMember,
+  UserAccount,
+} from "./types";
 import { createInitialDatabase } from "./seed-data";
 
 declare global {
@@ -12,6 +21,106 @@ declare global {
 const LOCAL_DATA_DIR = path.join(process.cwd(), "data");
 const LOCAL_DB_FILE = path.join(LOCAL_DATA_DIR, "db.json");
 const TMP_DB_FILE = path.join(os.tmpdir(), "cap-taskboard-db.json");
+
+function mergeDatabases(base: DatabaseSchema, overlay: DatabaseSchema): DatabaseSchema {
+  const deletedTaskIds = new Set<string>([
+    ...(base.deletedTaskIds || []),
+    ...(overlay.deletedTaskIds || []),
+  ]);
+
+  // Tasks: start with base tasks, overlay overrides/adds tasks
+  const taskMap = new Map<string, TaskRecord>();
+  for (const t of base.tasks || []) {
+    if (!deletedTaskIds.has(t.id)) {
+      taskMap.set(t.id, t);
+    }
+  }
+  for (const t of overlay.tasks || []) {
+    if (!deletedTaskIds.has(t.id)) {
+      const existing = taskMap.get(t.id);
+      if (!existing) {
+        taskMap.set(t.id, t);
+      } else {
+        const overlayTime = t.updatedAt ? new Date(t.updatedAt).getTime() : 0;
+        const existingTime = existing.updatedAt ? new Date(existing.updatedAt).getTime() : 0;
+        if (overlayTime >= existingTime) {
+          taskMap.set(t.id, { ...existing, ...t });
+        }
+      }
+    }
+  }
+
+  // Users: preserve all users and elevated roles
+  const userMap = new Map<string, UserAccount>();
+  for (const u of base.users || []) {
+    userMap.set(u.email.toLowerCase(), u);
+  }
+  for (const u of overlay.users || []) {
+    const key = u.email.toLowerCase();
+    const existing = userMap.get(key);
+    if (!existing) {
+      userMap.set(key, u);
+    } else {
+      userMap.set(key, {
+        ...existing,
+        ...u,
+        role: u.role === "ADMIN" || existing.role === "ADMIN" ? "ADMIN" : "MEMBER",
+        adminRequestStatus:
+          u.adminRequestStatus === "APPROVED" || existing.adminRequestStatus === "APPROVED"
+            ? "APPROVED"
+            : u.adminRequestStatus || existing.adminRequestStatus,
+        passwordSet: u.passwordSet ?? existing.passwordSet,
+        passwordHash: u.passwordHash || existing.passwordHash,
+      });
+    }
+  }
+
+  // Team:
+  const teamMap = new Map<string, TeamMember>();
+  for (const m of base.team || []) {
+    teamMap.set(m.id || m.name.toLowerCase(), m);
+  }
+  for (const m of overlay.team || []) {
+    const key = m.id || m.name.toLowerCase();
+    teamMap.set(key, { ...(teamMap.get(key) || {}), ...m } as TeamMember);
+  }
+
+  // Clients:
+  const clientMap = new Map<string, ClientRecord>();
+  for (const c of base.clients || []) {
+    clientMap.set(c.id || c.name.toLowerCase(), c);
+  }
+  for (const c of overlay.clients || []) {
+    const key = c.id || c.name.toLowerCase();
+    clientMap.set(key, { ...(clientMap.get(key) || {}), ...c } as ClientRecord);
+  }
+
+  // Activity log: deduplicate by id
+  const actMap = new Map<string, ActivityLogEntry>();
+  for (const a of base.activityLog || []) actMap.set(a.id, a);
+  for (const a of overlay.activityLog || []) actMap.set(a.id, a);
+  const activityLog = Array.from(actMap.values())
+    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+    .slice(0, 200);
+
+  // Sort tasks by numeric ID
+  const tasks = Array.from(taskMap.values()).sort((a, b) => {
+    const numA = parseInt((a.id.match(/^T-(\d+)$/) || [])[1] || "0", 10);
+    const numB = parseInt((b.id.match(/^T-(\d+)$/) || [])[1] || "0", 10);
+    return numA - numB;
+  });
+
+  return {
+    tasks,
+    clients: Array.from(clientMap.values()),
+    team: Array.from(teamMap.values()),
+    estimateBuffer: overlay.estimateBuffer ?? base.estimateBuffer ?? 0.2,
+    users: Array.from(userMap.values()),
+    activityLog,
+    settings: overlay.settings || base.settings,
+    deletedTaskIds: Array.from(deletedTaskIds),
+  };
+}
 
 function readFromDisk(): DatabaseSchema | null {
   let localData: DatabaseSchema | null = null;
@@ -40,7 +149,10 @@ function readFromDisk(): DatabaseSchema | null {
   }
 
   if (localData && tmpData) {
-    return tmpMtime > localMtime ? tmpData : localData;
+    // Merge both sources so no task, user, or update is lost
+    return tmpMtime >= localMtime
+      ? mergeDatabases(localData, tmpData)
+      : mergeDatabases(tmpData, localData);
   }
   return localData || tmpData || null;
 }
@@ -334,6 +446,140 @@ export function syncClientUsersToDb(
         });
       }
     }
+  }
+
+  return changed;
+}
+
+/**
+ * Synchronize client-cached tasks into server DB memory & disk.
+ * This ensures that on Vercel serverless cold starts or multi-lambda environments,
+ * tasks created, edited, or deleted by admins are never lost.
+ */
+export function syncClientTasksToDb(
+  db: DatabaseSchema,
+  clientTasks: unknown[],
+  deletedTaskIds?: string[]
+): boolean {
+  if (
+    (!Array.isArray(clientTasks) || clientTasks.length === 0) &&
+    (!Array.isArray(deletedTaskIds) || deletedTaskIds.length === 0)
+  ) {
+    return false;
+  }
+  let changed = false;
+
+  if (!db.deletedTaskIds) db.deletedTaskIds = [];
+  const delSet = new Set<string>(db.deletedTaskIds);
+
+  if (Array.isArray(deletedTaskIds)) {
+    for (const did of deletedTaskIds) {
+      if (typeof did === "string" && did.trim()) {
+        const cleanId = did.trim();
+        if (!delSet.has(cleanId)) {
+          delSet.add(cleanId);
+          db.deletedTaskIds.push(cleanId);
+          changed = true;
+        }
+      }
+    }
+  }
+
+  // Remove any deleted tasks from db.tasks
+  const initialCount = db.tasks.length;
+  db.tasks = db.tasks.filter((t) => !delSet.has(t.id));
+  if (db.tasks.length !== initialCount) {
+    changed = true;
+  }
+
+  if (Array.isArray(clientTasks)) {
+    for (const raw of clientTasks) {
+      if (!raw || typeof raw !== "object") continue;
+      const ct = raw as Partial<TaskRecord>;
+      if (!ct.id || !ct.task || delSet.has(ct.id)) continue;
+
+      const idx = db.tasks.findIndex((t) => t.id === ct.id);
+      if (idx === -1) {
+        // Task missing on this serverless lambda: restore it!
+        db.tasks.push(ct as TaskRecord);
+        changed = true;
+      } else {
+        // Compare updatedAt timestamp or fields to keep newest edits
+        const existing = db.tasks[idx];
+        const clientUpdated = ct.updatedAt ? new Date(ct.updatedAt).getTime() : 0;
+        const serverUpdated = existing.updatedAt ? new Date(existing.updatedAt).getTime() : 0;
+
+        if (clientUpdated >= serverUpdated) {
+          db.tasks[idx] = { ...existing, ...ct };
+          changed = true;
+        }
+      }
+    }
+  }
+
+  if (changed) {
+    // Keep tasks sorted numerically by T-XXX
+    db.tasks.sort((a, b) => {
+      const numA = parseInt((a.id.match(/^T-(\d+)$/) || [])[1] || "0", 10);
+      const numB = parseInt((b.id.match(/^T-(\d+)$/) || [])[1] || "0", 10);
+      return numA - numB;
+    });
+  }
+
+  return changed;
+}
+
+/**
+ * Helper to inspect request headers and sync any client-provided users and tasks.
+ */
+export async function extractAndSyncRequestData(
+  request: NextRequest,
+  db: DatabaseSchema
+): Promise<boolean> {
+  let changed = false;
+
+  // 1. Sync users
+  const clientUsersHeader = request.headers.get("x-cap-client-users");
+  if (clientUsersHeader) {
+    try {
+      const clientUsers = JSON.parse(clientUsersHeader);
+      if (Array.isArray(clientUsers)) {
+        if (syncClientUsersToDb(db, clientUsers)) changed = true;
+      }
+    } catch {
+      // ignore parse errors
+    }
+  }
+
+  // 2. Sync tasks and deleted task IDs
+  const clientTasksHeader = request.headers.get("x-cap-client-tasks");
+  const clientDeletedHeader = request.headers.get("x-cap-client-deleted-tasks");
+  let clientTasks: unknown[] = [];
+  let clientDeleted: string[] = [];
+
+  if (clientTasksHeader) {
+    try {
+      const parsed = JSON.parse(clientTasksHeader);
+      if (Array.isArray(parsed)) clientTasks = parsed;
+    } catch {
+      // ignore parse errors
+    }
+  }
+  if (clientDeletedHeader) {
+    try {
+      const parsed = JSON.parse(clientDeletedHeader);
+      if (Array.isArray(parsed)) clientDeleted = parsed;
+    } catch {
+      // ignore parse errors
+    }
+  }
+
+  if (clientTasks.length > 0 || clientDeleted.length > 0) {
+    if (syncClientTasksToDb(db, clientTasks, clientDeleted)) changed = true;
+  }
+
+  if (changed) {
+    await saveDb(db);
   }
 
   return changed;
