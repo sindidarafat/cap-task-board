@@ -402,10 +402,19 @@ export default function TaskBoardApp() {
         });
       }
     }
-    // 3. Any additional registered users in users
+    // 3. Registered users in users (also updates existing roster members if promoted/demoted)
     for (const u of users) {
       const key = u.memberId || u.id;
-      if (!map.has(key)) {
+      const existing =
+        map.get(key) ||
+        Array.from(map.values()).find(
+          (m) => m.email.toLowerCase() === u.email.toLowerCase()
+        );
+      if (existing) {
+        existing.role = u.role;
+        if (u.teamRole) existing.title = u.teamRole;
+        if (u.phone && !existing.phone) existing.phone = u.phone;
+      } else {
         map.set(key, {
           id: key,
           name: u.name,
@@ -422,10 +431,12 @@ export default function TaskBoardApp() {
     for (const lu of local) {
       const email = String(lu.email || "").trim().toLowerCase();
       if (email) {
-        const exists = Array.from(map.values()).some(
+        const existing = Array.from(map.values()).find(
           (m) => m.email.toLowerCase() === email
         );
-        if (!exists) {
+        if (existing) {
+          if (lu.role === "ADMIN") existing.role = "ADMIN";
+        } else {
           const id = String(lu.memberId || lu.id || `M-LOCAL-${email}`);
           map.set(id, {
             id,
